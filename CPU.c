@@ -22,15 +22,15 @@ struct ConditionCodes { // specifying bit count (1 bit flags/flip flops)
 // ^ demonstration of the use of "16 bit" registers vs. regular use
 
 // address = stored in HL register pair for memory instructions
+// 8 bit registers, A, B, C, D, E, H, and L
+// 8 bit accumulator referred to by A, and
+// the rest of the registers are general purpose
+      
+// "16 bit" registers - BC = B, DE = D, HL = H
+
 
 struct State8080 {
-  uint8_t a;           // 8 bit registers, A, B, C, D, E, H, and L
-  uint8_t b;           // 8 bit accumulator referred to by A, and
-  uint8_t c;           // the rest of the registers are general purpose
-  uint8_t d;        
-  uint8_t e;           // "16 bit" registers - BC = B, DE = D, HL = H
-  uint8_t h;
-  uint8_t l;
+  uint8_t registers[8];// registers B, C, D, E, H, L, Memory, A
   uint16_t sp;         // stack pointer
   uint16_t pc;         // program counter
   uint8_t *memory;     // RAM, pointer to sequence of unsigned char/uint8
@@ -67,53 +67,33 @@ void UpdateCCZeroSignParity(State8080_T state, uint16_t result) {
 
 uint8_t GetRegister(State8080_T state, uint8_t reg) {
   switch (reg) {
-  case 0x00:
-    return state->b; break;
-  case 0x01:
-    return state->c; break;
-  case 0x02:
-    return state->d; break;
-  case 0x03:
-    return state->e; break;
-  case 0x04:
-    return state->h; break;
-  case 0x05:
-    return state->l; break;
   case 0x06:
     // H = high order bits, L = lower order bits, so shift H 8 bits up
-    uint16_t offset = (state->h<<8) | (state->l);
+    uint16_t offset = (state->registers[4]<<8) | (state->registers[5]);
     return state->memory[offset]; break;
   case 0x07:
-    return state->a; break;
+    return state->registers[7]; break;
   default:
-    fprintf(stderr, "Could not find this register");
-    exit(1);
+    if (reg > 7) {
+      fprintf (stderr, "Could not find register in get register");
+      exit(1);
+    }
+    return state->registers[reg];
   }
 }
 
 uint8_t AddToRegister (State8080_T state, uint8_t reg, uint8_t add) {
   switch (reg) {
-  case 0x00:
-    state->b += add; return state->b; break;
-  case 0x01:
-    state->c += add; return state->c; break;
-  case 0x02:
-    state->d += add; return state->d; break;
-  case 0x03:
-    state->e += add; return state->e; break;
-  case 0x04:
-    state->h += add; return state->h; break;
-  case 0x05:
-    state->l += add; return state->l; break;
   case 0x06:
     // H = high order bits, L = lower order bits, so shift H 8 bits up
-    uint16_t offset = (state->h<<8) | (state->l);
+    uint16_t offset = (state->registers[4]<<8) | (state->registers[5]);
     state->memory[offset] += add; return state->memory[offset]; break;
-  case 0x07:
-    state->a += add; return state->a; break;
   default:
-    fprintf(stderr, "Could not find this register in addtoreg");
-    exit(1);
+    if (reg > 7) { 
+      fprintf(stderr, "Could not find this register in addtoreg");
+      exit(1);
+    }
+    state->registers[reg] += add; return state->registers[reg]; break;
   }
 }
 
@@ -121,8 +101,24 @@ void MOV (State8080_T state) {
   unsigned char *opcode = &state->memory[state->pc];
   uint8_t dest = ((*opcode) & 0x38)>>3;
   uint8_t source = (*opcode) & 0x07;
-  
-  
+
+  if (dest == 6 || source == 6) {
+    if (dest == 6 && source != 6) {
+      uint16_t offset = (state->registers[4]<<8) | (state->registers[5]);
+      state->memory[offset] = state->registers[source];
+    }
+    else if (dest != 6 && source == 6) {
+      uint16_t offset = (state->registers[4]<<8) | (state->registers[5]);
+      state->registers[source] = state->memory[offset];
+    }
+    else {
+      uint16_t offset = (state->registers[4]<<8) | (state->registers[5]);
+      state->memory[offset] = state->memory[offset];
+    }
+  }
+  else {
+    state->registers[dest] = state->registers[source];
+  }
 }
 
 // ADD register r from opcode to accumulator (a)
@@ -130,10 +126,10 @@ void ADD_R (State8080_T state) {
   unsigned char *opcode = &state->memory[state->pc];
   uint8_t reg = (*opcode) & 0x07;
   uint8_t reg_value = GetRegister(state, reg);
-  uint16_t sum = (uint16_t) state->a + (uint16_t) reg_value;
+  uint16_t sum = (uint16_t) state->registers[7] + (uint16_t) reg_value;
   
   UpdateCCSimple(state, sum);
-  state->a = sum & 0xff;              // update accumulator
+  state->registers[7] = sum & 0xff;              // update accumulator
 }
 
 // ADD register r from opcode to accumulator (a) with carry
@@ -141,10 +137,10 @@ void ADC_R (State8080_T state) {
   unsigned char *opcode = &state->memory[state->pc];
   uint8_t reg = (*opcode) & 0x07;
   uint8_t reg_value = GetRegister(state, reg);
-  uint16_t sum = (uint16_t) state->a + (uint16_t) reg_value + (uint16_t) state->cc->c;
+  uint16_t sum = (uint16_t) state->registers[7] + (uint16_t) reg_value + (uint16_t) state->cc->c;
   
   UpdateCCSimple(state, sum);
-  state->a = sum & 0xff;              // update accumulator
+  state->registers[7] = sum & 0xff;              // update accumulator
 }
 
 
@@ -156,27 +152,18 @@ void INR_R (State8080_T state) {
   // source for CC info: http://altairclone.com/downloads/manuals/8080%20Programmers%20Manual.pdf vii
 
   switch (reg) {
-  case 0x00:
-    state->b++; UpdateCCZeroSignParity(state, state->b); break;
-  case 0x01:
-    state->c++; UpdateCCZeroSignParity(state, state->c); break;
-  case 0x02:
-    state->d++; UpdateCCZeroSignParity(state, state->d); break;
-  case 0x03:
-    state->e++; UpdateCCZeroSignParity(state, state->e); break;
-  case 0x04:
-    state->h++; UpdateCCZeroSignParity(state, state->h); break;
-  case 0x05:
-    state->l++; UpdateCCZeroSignParity(state, state->l); break;
   case 0x06:
     // H = high order bits, L = lower order bits, so shift H 8 bits up
-    uint16_t offset = (state->h<<8) | (state->l);
+    uint16_t offset = (state->registers[4]<<8) | (state->registers[5]);
     state->memory[offset]++; UpdateCCZeroSignParity(state, state->memory[offset]); break;
-  case 0x07:
-    state->a++; UpdateCCZeroSignParity(state, state->a); break;
   default:
-    fprintf(stderr, "Could not find this register in increg");
-    exit(1);  
+    if (reg > 7) {
+      fprintf(stderr, "Could not find this register in increg");
+      exit(1);
+    }
+    state->registers[reg]++;
+    UpdateCCZeroSignParity(state, state->registers[reg]);
+    break;
 }
 
 // DCR register r from opcode
@@ -185,27 +172,18 @@ void DCR_R (State8080_T state) {
   uin8_t reg = ((*opcode) & 0x38)>>3;
 
   switch (reg) {
-  case 0x00:
-    state->b--; UpdateCCZeroSignParity(state, state->b); break;
-  case 0x01:
-    state->c--; UpdateCCZeroSignParity(state, state->c); break;
-  case 0x02:
-    state->d--; UpdateCCZeroSignParity(state, state->d); break;
-  case 0x03:
-    state->e--; UpdateCCZeroSignParity(state, state->e); break;
-  case 0x04:
-    state->h--; UpdateCCZeroSignParity(state, state->h); break;
-  case 0x05:
-    state->l--; UpdateCCZeroSignParity(state, state->l); break;
   case 0x06:
     // H = high order bits, L = lower order bits, so shift H 8 bits up
     uint16_t offset = (state->h<<8) | (state->l);
     state->memory[offset]--; UpdateCCZeroSignParity(state, state->memory[offset]); break;
-  case 0x07:
-    state->a--; UpdateCCZeroSignParity(state, state->a); break;
   default:
-    fprintf(stderr, "Could not find this register in addtoreg");
-    exit(1);    
+    if (reg > 7) {
+      fprintf(stderr, "Could not find this register in addtoreg");
+      exit(1);
+    }
+    state->registers[reg]--;
+    UpdateCCZeroSignParity(state, state->registers[reg]);
+    break;
 }
 
 void Emulate8080Op(State8080_T state) {
@@ -218,14 +196,80 @@ void Emulate8080Op(State8080_T state) {
   case 0x00: break;        // NOP
     // --------------- MOVE/LOADS/STORES ----------------------
 
+    // TODO: FORMAT THESE COMMENTS FOR MOV PROPERLY
     // -------------------- MOV -------------------------------
+  case 0x40:               // MOV B, B
   case 0x41:               // MOV B, C
-    state->b = state->c; break;
   case 0x42:               // MOV B, D
-    state->b = state->d; break;
   case 0x43:               // MOV B, E
-    state->b = state->e; break;
+  case 0x44:               // MOV B, H
+  case 0x45:               // MOV B, L
+  case 0x46:               // MOV B, Memory
+  case 0x47:               // MOV B, Accumulator
+  case 0x48:               // MOV C, B
+  case 0x49:               // MOV C, C
+  case 0x4A:               // MOV B, C
+  case 0x4B:               // MOV B, D
+  case 0x4C:               // MOV B, E
+  case 0x4D:               // MOV B, C
+  case 0x4E:               // MOV B, D
+  case 0x4F:               // MOV B, E
+  case 0x50:               // MOV B, 
+  case 0x51:               // MOV B, C
+  case 0x52:               // MOV B, D
+  case 0x53:               // MOV B, E
+  case 0x54:               // MOV B, H
+  case 0x55:               // MOV B, L
+  case 0x56:               // MOV B, Memory
+  case 0x57:               // MOV B, Accumulator
+  case 0x58:
+  case 0x59:               // MOV B, E
+  case 0x5A:               // MOV B, C
+  case 0x5B:               // MOV B, D
+  case 0x5C:               // MOV B, E
+  case 0x5D:               // MOV B, C
+  case 0x5E:               // MOV B, D
+  case 0x5F:               // MOV B, E
+  case 0x60:               // MOV B, 
+  case 0x61:               // MOV B, C
+  case 0x62:               // MOV B, D
+  case 0x63:               // MOV B, E
+  case 0x64:               // MOV B, H
+  case 0x65:               // MOV B, L
+  case 0x66:               // MOV B, Memory
+  case 0x67:               // MOV B, Accumulator
+  case 0x68:
+  case 0x69:               // MOV B, E
+  case 0x6A:               // MOV B, C
+  case 0x6B:               // MOV B, D
+  case 0x6C:               // MOV B, E
+  case 0x6D:               // MOV B, C
+  case 0x6E:               // MOV B, D
+  case 0x6F:               // MOV B,
+  case 0x70:               // MOV B, 
+  case 0x71:               // MOV B, C
+  case 0x72:               // MOV B, D
+  case 0x73:               // MOV B, E
+  case 0x74:               // MOV B, H
+  case 0x75:               // MOV B, L
+  case 0x76:               // MOV B, Memory
+  case 0x77:               // MOV B, Accumulator
+  case 0x78:
+  case 0x79:               // MOV B, E
+  case 0x7A:               // MOV B, C
+  case 0x7B:               // MOV B, D
+  case 0x7C:               // MOV B, E
+  case 0x7D:               // MOV B, C
+  case 0x7E:               // MOV B, D
+  case 0x7F:               // MOV B, E
+    MOV (state);
+    // no cc affected
+    break;
 
+    // --------------------- MVI ------------------------------
+  case 0x06:               // MVI B, move immediate to B
+
+    state->pc += 1; // increment for immediate
     
   case 0x01:               // LXI B, word
     state->c = opcode[1];
@@ -263,54 +307,54 @@ void Emulate8080Op(State8080_T state) {
 
     // ---------------------- INX -------------------------------
   case 0x03:               // INX B, increment BC
-    uint16_t BC = (state->b<<8) | (state->c);
+    uint16_t BC = (state->registers[0]<<8) | (state->registers[1]);
 
     uint32_t sum = BC++;
     // populate bc
-    state->b = (uint8_t) (sum>>8);
-    state->c = (uint8_t) (sum & 0x0f);
+    state->registers[0] = (uint8_t) (sum>>8);
+    state->registers[1] = (uint8_t) (sum & 0x0f);
     // no flags affected  
   case 0x13:               // INX D, increment DE
-    uint16_t DE = (state->d<<8) | (state->e);
+    uint16_t DE = (state->registers[2]<<8) | (state->registers[3]);
 
     uint32_t sum = DE++;
     // populate DE
-    state->d = (uint8_t) (sum>>8);
-    state->e = (uint8_t) (sum & 0x0f);
+    state->registers[2] = (uint8_t) (sum>>8);
+    state->registers[3] = (uint8_t) (sum & 0x0f);
     // no flags affected
   case 0x23:               // INX H, increment HL
-    uint16_t HL = (state->h<<8) | (state->l);
+    uint16_t HL = (state->registers[4]<<8) | (state->registers[5]);
 
     uint32_t sum = HL++;
     // populate HL
-    state->h = (uint8_t) (sum>>8);
-    state->l = (uint8_t) (sum & 0x0f);
+    state->registers[4] = (uint8_t) (sum>>8);
+    state->registers[5] = (uint8_t) (sum & 0x0f);
     // no flags affected
 
     // ----------------------- DCX -----------------------------
   case 0x0B:               // DCX B, decrement BC
-    uint16_t BC = (state->b<<8) | (state->c);
+    uint16_t BC = (state->registers[0]<<8) | (state->registers[1]);
 
     uint32_t sum = BC--;
     // populate bc
-    state->b = (uint8_t) (sum>>8);
-    state->c = (uint8_t) (sum & 0x0f);
+    state->registers[0] = (uint8_t) (sum>>8);
+    state->registers[1] = (uint8_t) (sum & 0x0f);
     // no flags affected  
   case 0x1B:               // DCX D, decrement DE
-    uint16_t DE = (state->d<<8) | (state->e);
+    uint16_t DE = (state->registers[2]<<8) | (state->registers[3]);
 
     uint32_t sum = DE--;
     // populate de
-    state->d = (uint8_t) (sum>>8);
-    state->e = (uint8_t) (sum & 0x0f);
+    state->registers[2] = (uint8_t) (sum>>8);
+    state->registers[3] = (uint8_t) (sum & 0x0f);
     // no flags affected
   case 0x2B:               // DCX H, decrement HL
-    uint16_t HL = (state->h<<8) | (state->l);
+    uint16_t HL = (state->registers[4]<<8) | (state->registers[5]);
 
     uint32_t sum = HL--;
     // populate hl
-    state->h = (uint8_t) (sum>>8);
-    state->l = (uint8_t) (sum & 0x0f);
+    state->registers[4] = (uint8_t) (sum>>8);
+    state->registers[5] = (uint8_t) (sum & 0x0f);
     // no flags affected
 
     // ------------------------ADDS------------------------------
@@ -341,64 +385,64 @@ void Emulate8080Op(State8080_T state) {
 
     // ---------------------- ADI --------------------------------
   case 0xC6:               // ADI byte, add immediate
-    uint16_t sum = (uint16_t) state->a + (uint16_t) opcode[1]; // next byte
+    uint16_t sum = (uint16_t) state->registers[7] + (uint16_t) opcode[1]; // next byte
 
     UpdateCCSimple(state, sum);
-    state->a = sum & 0xff;
+    state->registers[7] = sum & 0xff;
     state->pc += 1; // for the immediate byte
     break;
 
   case 0xC7:               // ACI, add immediate to A with carry
-    uint16_t sum = (uint16_t) state->a + (uint16_t) opcode[1] + (uint16_t) state->cc->c;
+    uint16_t sum = (uint16_t) state->registers[7] + (uint16_t) opcode[1] + (uint16_t) state->cc->c;
 
     UpdateCCSimple(state, sum);
-    state->a = sum & 0xff;
+    state->registers[7] = sum & 0xff;
     state->pc += 1;
     break;
 
     // ------------------------ DAD ---------------------------
   case 0x09:              // DAD B, BC + HL --> HL, updates only carry flag
-    uint16_t BC = (state->b<<8) | (state->c);
-    uint16_t HL = (state->h<<8) | (state->l);
+    uint16_t BC = (state->registers[0]<<8) | (state->registers[1]);
+    uint16_t HL = (state->registers[4]<<8) | (state->registers[5]);
 
     uint32_t sum = BC + HL;
     // populate HL
-    state->h = (uint8_t) (sum>>8);
-    state->l = (uint8_t) (sum & 0x0f);
+    state->registers[4] = (uint8_t) (sum>>8);
+    state->registers[5] = (uint8_t) (sum & 0x0f);
 
     // update carry flag
     state->cc->c = (sum > 0xffff);
     break;
   case 0x19:              // DAD D, DE + HL --> HL, updates only carry flag
-    uint16_t DE = (state->d<<8) | (state->e);
-    uint16_t HL = (state->h<<8) | (state->l);
+    uint16_t DE = (state->registers[2]<<8) | (state->registers[3]);
+    uint16_t HL = (state->registers[4]<<8) | (state->registers[5]);
 
     uint32_t sum = DE + HL;
     // populate HL
-    state->h = (uint8_t) (sum>>8);
-    state->l = (uint8_t) (sum & 0x0f);
+    state->registers[4] = (uint8_t) (sum>>8);
+    state->registers[5] = (uint8_t) (sum & 0x0f);
 
     // update carry flag
     state->cc->c = (sum > 0xffff);
     break;
   case 0x29:              // DAD H, HL + HL --> HL, updates only carry flag
-    uint16_t HL = (state->h<<8) | (state->l);
+    uint16_t HL = (state->registers[4]<<8) | (state->registers[5]);
 
     uint32_t sum = HL + HL;
     // populate HL
-    state->h = (uint8_t) (sum>>8);
-    state->l = (uint8_t) (sum & 0x0f);
+    state->registers[4] = (uint8_t) (sum>>8);
+    state->registers[5] = (uint8_t) (sum & 0x0f);
 
     // update carry flag
     state->cc->c = (sum > 0xffff);
     break;
   case 0x39:              // DAD SP, SP + HL --> HL, updates only carry flag
-    uint16_t HL = (state->h<<8) | (state->l);
+    uint16_t HL = (state->registers[4]<<8) | (state->registers[5]);
 
     uint32_t sum = state->sp + HL;
     // populate HL
-    state->h = (uint8_t) (sum>>8);
-    state->l = (uint8_t) (sum & 0x0f);
+    state->registers[4] = (uint8_t) (sum>>8);
+    state->registers[5] = (uint8_t) (sum & 0x0f);
 
     // update carry flag
     state->cc->c = (sum > 0xffff);
