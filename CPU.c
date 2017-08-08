@@ -121,6 +121,19 @@ void MOV (State8080_T state) {
   }
 }
 
+void MVI (State8080_T state) {
+  unsigned char *opcode = &state->memory[state->pc];
+  uint8_t dest = ((*opcode) & 0x38)>>3;
+
+  if (dest == 6) {
+    uint16_t offset = (state->registers[4]<<8) | (state->registers[5]);
+    state->memory[offset] = opcode[1];
+  }
+  else {
+    state->registers[dest] = opcode[1];
+  }
+}
+
 // ADD register r from opcode to accumulator (a)
 void ADD_R (State8080_T state) {
   unsigned char *opcode = &state->memory[state->pc];
@@ -141,6 +154,46 @@ void ADC_R (State8080_T state) {
   
   UpdateCCSimple(state, sum);
   state->registers[7] = sum & 0xff;              // update accumulator
+}
+
+// ANA register r, r & a -> a, set sign, zero, parity. carry = 0
+void ANA (State8080_T state) {
+  uint8_t result;
+  unsigned char *opcode = &state->memory[state->pc];
+  uint8_t reg = (*opcode) & 0x07;
+
+  if (reg == 6) {
+    uint16_t offset = (state->registers[4]<<8) | (state->registers[5]);
+    result = state->registers[7] & state->memory[offset];
+    state->registers[7] = result;
+  }
+  else {
+    result = state->registers[7] & state->registers[reg];
+    state->registers[7] = result;
+  }
+
+  UpdateCCSimple(state, sum);
+  state->cc->c = 0; // set carry to 0 just in case
+}
+
+// ANA register r, r & a -> a, set sign, zero, parity. carry = 0
+void XRA (State8080_T state) {
+  uint8_t result;
+  unsigned char *opcode = &state->memory[state->pc];
+  uint8_t reg = (*opcode) & 0x07;
+
+  if (reg == 6) {
+    uint16_t offset = (state->registers[4]<<8) | (state->registers[5]);
+    result = state->registers[7] ^ state->memory[offset];
+    state->registers[7] = result;
+  }
+  else {
+    result = state->registers[7] ^ state->registers[reg];
+    state->registers[7] = result;
+  }
+
+  UpdateCCSimple(state, sum);
+  state->cc->c = 0; // set carry to 0 just in case
 }
 
 
@@ -268,17 +321,106 @@ void Emulate8080Op(State8080_T state) {
 
     // --------------------- MVI ------------------------------
   case 0x06:               // MVI B, move immediate to B
-
+  case 0x0E:               // MVI C, move immediate to C
+  case 0x16:               // MVI D, move immediate to D
+  case 0x1E:               // MVI E, move immediate to E
+  case 0x26:               // MVI H, move immediate to H
+  case 0x2E:               // MVI L, move immediate to L
+  case 0x36:               // MVI memory, move immediate to memory
+  case 0x3E:               // MVI A, move immediate to accumulator
+    MVI (state);
     state->pc += 1; // increment for immediate
-    
+    break;
+
+    // ---------------------- LXI -----------------------------  
   case 0x01:               // LXI B, word
-    state->c = opcode[1];
-    state->b = opcode[2];
+    state->registers[1] = opcode[1]; // little endian load
+    state->registers[0] = opcode[2];
     state->pc += 2; // advance PC 2 because next 2 bytes were data
     break;
+  case 0x11:               // LXI D, word
+    state->registers[3] = opcode[1];
+    state->registers[2] = opcode[2];
+    state->pc += 2;
+    break;
+  case 0x21:               // LXI H, word
+    state->registers[5] = opcode[1];
+    state->registers[4] = opcode[2];
+    state->pc += 2;
+    break;
+    // --------------------- STAX -----------------------------
+  case 0x02:               // STAX B, store A indirect
+    break;
   
+    // --------------------- LDAX -----------------------------
 
+  case 0x0A:               // LDAX B, load A indirect
+    uint16_t BC = (state->registers[0]<<8) | (state->registers[1]);
 
+    // value in memory at BC
+    uint8_t mem = state->memory[BC];
+
+    state->registers[7] = mem;
+    break;
+
+  case 0x1A:               // LDAX D, load A indirect
+    uint16_t DE = (state->registers[2]<<8) | (state->registers[3]);
+
+    // value in memory at BC
+    uint8_t mem = state->memory[DE];
+
+    state->registers[7] = mem;
+    break;
+
+    // ----------------------- STA -----------------------------
+
+  case 0x32:               // STA, store A direct
+    uint8_t addr = opcode[1];
+
+    state->memory[addr] = state->registers[7]; // store A at addr
+    
+    state->pc += 1;
+    break;
+
+    // ----------------------- LDA -----------------------------
+
+  case 0x3A:               // LDA, load A direct
+    uint8_t addr = opcode[1];
+
+    state->registers[7] = state->memory[addr]; // store value at addr into A
+    
+    state->pc += 1;
+    break;
+
+    // -------------------- STACK OPS ---------------------------
+
+    // --------------------- POP --------------------------------
+
+  case 0xC1:               // POP B, pops 16 bits off stack into BC
+    // RP1 <- (SP) + 1
+    state->registers[0] = state->memory[state->sp + 1];
+    // RP2 <- (SP)
+    state->registers[1] = state->memory[state->sp];
+
+    state->sp += 2; // shift stack pointer back
+    break;
+  case 0xC1:               // POP D, pops 16 bits off stack into DE
+    // RP1 <- (SP) + 1
+    state->registers[0] = state->memory[state->sp + 1];
+    // RP2 <- (SP)
+    state->registers[1] = state->memory[state->sp];
+
+    state->sp += 2; // shift stack pointer back
+    break;
+  case 0xC1:               // POP H, pops 16 bits off stack into HF
+    // RP1 <- (SP) + 1
+    state->registers[0] = state->memory[state->sp + 1];
+    // RP2 <- (SP)
+    state->registers[1] = state->memory[state->sp];
+
+    state->sp += 2; // shift stack pointer back
+    break;
+    
     // --------------- INCREMENTS/DECREMENTS --------------------
 
     // --------------------- INR --------------------------------
@@ -339,7 +481,8 @@ void Emulate8080Op(State8080_T state) {
     // populate bc
     state->registers[0] = (uint8_t) (sum>>8);
     state->registers[1] = (uint8_t) (sum & 0x0f);
-    // no flags affected  
+    // no flags affected
+    break;
   case 0x1B:               // DCX D, decrement DE
     uint16_t DE = (state->registers[2]<<8) | (state->registers[3]);
 
@@ -348,6 +491,7 @@ void Emulate8080Op(State8080_T state) {
     state->registers[2] = (uint8_t) (sum>>8);
     state->registers[3] = (uint8_t) (sum & 0x0f);
     // no flags affected
+    break;
   case 0x2B:               // DCX H, decrement HL
     uint16_t HL = (state->registers[4]<<8) | (state->registers[5]);
 
@@ -356,6 +500,7 @@ void Emulate8080Op(State8080_T state) {
     state->registers[4] = (uint8_t) (sum>>8);
     state->registers[5] = (uint8_t) (sum & 0x0f);
     // no flags affected
+    break;
 
     // ------------------------ADDS------------------------------
 
@@ -449,9 +594,50 @@ void Emulate8080Op(State8080_T state) {
     break;
 
     // ------------------- SUBTRACTS --------------------------
+
+    // ------------------- LOGICAL ----------------------------
+
+    // ----------------------- ANA ----------------------------
+  case 0xA0:              // ANA B, AND register with A, goes into A
+  case 0xA1:              // ANA C, AND register with A, goes into A
+  case 0xA2:              // ANA D, AND register with A, goes into A
+  case 0xA3:              // ANA E, AND register with A, goes into A
+  case 0xA4:              // ANA H, AND register with A, goes into A
+  case 0xA5:              // ANA L, AND register with A, goes into A
+  case 0xA6:              // ANA Memory, AND register with A, goes into A
+  case 0xA7:              // ANA A, AND register with A, goes into A
+    ANA (state);
+    break;
+
+    // ----------------------- XRA ----------------------------
+  case 0xA8:              // XRA B, XOR register with A, goes into A
+  case 0xA9:              // XRA C, XOR register with A, goes into A
+  case 0xAA:              // XRA D, XOR register with A, goes into A
+  case 0xAB:              // XRA E, XOR register with A, goes into A
+  case 0xAC:              // XRA H, XOR register with A, goes into A
+  case 0xAD:              // XRA L, XOR register with A, goes into A
+  case 0xAE:              // XRA Memory, XOR register with A, goes into A
+  case 0xAF:              // XRA A, XOR register with A, goes into A
+    XRA (state);
+    break;
     
+    // ------------------- ROTATE -----------------------------
+  case 0x0f:              // RRC, rotate A right
+    uint8_t a0 = state->registers[7] & 0x01
+
+    // set carry = A0
+    state->cc->c = a0;
+
+    // rotate A right
+    // rotate
+    state->registers[7] >>= 1;
     
+    // A7 <- A0
+    state->registers[7] &= 0x7f;         // clear last bit
+    state->registers[7] |= (a0 << 7);    // update last bit
+    break;
     
+      
   }
   state->pc += 1; // move up one for opcode itself
 }
