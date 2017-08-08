@@ -16,7 +16,7 @@ CFLAGS =
 #       $ (CC) $ (CFLAGS) -c $<
 
 # Dependency rules for non-file targets
-all: disassemble
+all: disassemble cpu
 
 # clean directory
 clobber: clean
@@ -26,10 +26,14 @@ clean:
 
 # Dependency rules for file targets
 # include all files ncessary for building in -o shortcut case
+cpu: CPU.o
+	$(CC) $(CFLAGS) $< -o $@
 disassemble: disassemble.o disassembler.o
 	$(CC) $(CFLAGS) $< disassembler.o -o $@
 
 # object file dependencies in recipes for all binary files
+CPU.o: CPU.c
+	$(CC) $(CFLAGS) -c $<
 disassemble.o: disassemble.c disassembler.h
 	$(CC) $(CFLAGS) -c $<
 disassembler.o: disassembler.c disassembler.h
