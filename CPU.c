@@ -237,8 +237,19 @@ void DCR_R (State8080_T state) {
     state->registers[reg]--;
     UpdateCCZeroSignParity(state, state->registers[reg]);
     break;
+  }
 }
 
+ void JMP_conditional (State8080_T state, uint8_t condition) {
+   unsigned char *opcode = &state->memory[state->pc];
+   if (condition) {
+      uint16_t addr = (opcode[1] << 8) | (opcode[2] & 0xff);
+      state->pc = state->memory[addr];
+    }
+    else
+      state->pc += 2;
+ }
+ 
 void Emulate8080Op(State8080_T state) {
   unsigned char *opcode;
 
@@ -394,6 +405,10 @@ void Emulate8080Op(State8080_T state) {
 
     // -------------------- STACK OPS ---------------------------
 
+    // --------------------- PUSH------------------------------
+  case 0xC5:               // PUSH B, push register BC on stack
+    
+    
     // --------------------- POP --------------------------------
 
   case 0xC1:               // POP B, pops 16 bits off stack into BC
@@ -406,19 +421,55 @@ void Emulate8080Op(State8080_T state) {
     break;
   case 0xC1:               // POP D, pops 16 bits off stack into DE
     // RP1 <- (SP) + 1
-    state->registers[0] = state->memory[state->sp + 1];
+    state->registers[2] = state->memory[state->sp + 1];
     // RP2 <- (SP)
-    state->registers[1] = state->memory[state->sp];
+    state->registers[3] = state->memory[state->sp];
 
     state->sp += 2; // shift stack pointer back
     break;
   case 0xC1:               // POP H, pops 16 bits off stack into HF
     // RP1 <- (SP) + 1
-    state->registers[0] = state->memory[state->sp + 1];
+    state->registers[4] = state->memory[state->sp + 1];
     // RP2 <- (SP)
-    state->registers[1] = state->memory[state->sp];
+    state->registers[5] = state->memory[state->sp];
 
     state->sp += 2; // shift stack pointer back
+    break;
+
+    // -------------------- JUMP -------------------------------
+  case 0xC3:              // JMP, unconditional
+    // PC <- ADDR
+    uint16_t addr = (opcode[1] << 8) | (opcode[2] & 0xff);
+    state->pc = state->memory[addr];
+    break;
+  case 0xDA:              // JC, jump on carry
+    JMP_conditional(state, state->cc->c);
+    break;
+  case 0xD2:              // JNC, jump on no carry
+    JMP_conditional(state, (state->cc->c == 0));
+    break;
+  case 0xCA:              // JZ, jump on zero
+    JMP_conditional(state, state->cc->z);
+    break;
+  case 0xC2:              // JNZ, jump on no zero
+    JMP_conditional(state, (state->cc->z == 0));
+    break;
+  case 0xF2:              // JP, jump on positive
+    JMP_conditional(state, (state->cc->s == 0));
+    break;
+  case 0xFA:              // JM, jump on negative
+    JMP_conditional(state, state->cc->s);
+    break;
+  case 0xEA:              // JPE, jump on parity even
+    JMP_conditional(state, state->cc->p);
+    break;
+  case 0xE2:              // JPO, jump on parity odd
+    JMP_conditional(state, (state->cc->p == 0));
+    break;
+  case 0xE9:              // PCHL, HL to program counter
+    // PC <- HL
+    uint16_t addr = (state->registers[4] << 8) | (state->registers[5] && 0xff);
+    state->pc = addr;
     break;
     
     // --------------- INCREMENTS/DECREMENTS --------------------
