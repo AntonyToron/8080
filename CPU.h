@@ -16,3 +16,5 @@ State8080_T State8080_init();
 ConditionCodes_T ConditionCodes_init();
 
 Drivers_T Drivers_init();
+
+void State8080_load_mem(State8080_T state, int start, unsigned char *buffer);

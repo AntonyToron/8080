@@ -991,9 +991,14 @@ void Emulate8080Op(State8080_T state) {
   state->pc += 1; // move up one for opcode itself
 
   //  PRINT CURRENT INSTRUCTION AND STATE
+  printf("\t CURRENT INSTRUCTION: $%02x\n", *opcode);
+  
+  printf("\t CURRENT STATE: \n");
+  
   printf("\tC=%d, P=%d, S=%d, Z = %d\n", state->cc->c, state->cc->p, state->cc->s, state->cc->z);
   printf("\tA $%02x B $%02x C $%02x D $%02x E $%02x H $%02x L $%02x SP %04x\n", state->registers[7], state->registers[0], state->registers[1], state->registers[2], state->registers[3], state->registers[4], state->registers[5], state->sp);
-  
+
+  printf("\n");
 }
 
 ConditionCodes_T ConditionCodes_init () {
@@ -1062,4 +1067,11 @@ Drivers_T Drivers_init () {
   drivers->out[7] = empty_OUT;
 
   return drivers;
+}
+
+void State8080_load_mem(State8080_T state, int start, unsigned char *buffer) {
+  for (int i = start; i < 2048; i++) {
+    state->memory[i] = (uint8_t) *buffer;
+    buffer++;
+  }
 }

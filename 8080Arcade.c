@@ -26,11 +26,8 @@ void LOAD_ROM_invaders (State8080_T state) {
   unsigned char *buffer = readFileIntoBuffer("invaders");
 
   // load the rom
-  for (int i = 0; i < 2048; i++) {
-    state->memory[i] = (uint8_t) *buffer;
-    buffer++;
-  }
-  
+  State8080_load_mem(state, 0, buffer);
+    
   printf ("Successfully loaded ROM");
   
 }
