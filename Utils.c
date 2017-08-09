@@ -27,6 +27,8 @@ unsigned char * readFileIntoBuffer(char *filename) {
   unsigned char *buffer = malloc(fsize * sizeof(char));
 
   size_t bytesRead = fread(buffer, 1, fsize, f);
+
+  printf ("Bytes read: %i\n", (int) bytesRead);
   fclose(f);
 
   return buffer;
