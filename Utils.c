@@ -8,6 +8,7 @@
 #include "Utils.h"
 #include <stdio.h>
 #include <stddef.h>
+#include <stdlib.h>
 
 unsigned char * readFileIntoBuffer(char *filename) {
   FILE *f = fopen (filename, "rb");
