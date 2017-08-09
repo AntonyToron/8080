@@ -9,9 +9,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
-
-typedef struct State8080* State8080_T;
-typedef struct ConditionCodes* ConditionCodes_T;
+#include "CPU.h"
 
 struct ConditionCodes { // specifying bit count (1 bit flags/flip flops)
   uint8_t z : 1;   // zero flag
@@ -21,6 +19,15 @@ struct ConditionCodes { // specifying bit count (1 bit flags/flip flops)
   uint8_t ac : 1;  // auxiliary carry (carry out of 3 bit accumulator - DAA) 
   uint8_t pad : 3; // ??
   // IE: flip flop for interrupt enabled
+};
+
+// describe the behavior for each respective port
+// in should return a value to read into accumulator
+// out takes value to put into output
+// SHOULD BE IMPLEMENTED FOR I/O TO WORK
+struct Drivers {
+  uint8_t (*in[8]) (); // 8 IN ports on machine
+  void (*out[8]) (uint8_t ac);   // 8 OUT ports on machine
 };
 
 // Quick registers notes:
@@ -42,39 +49,38 @@ struct State8080 {
   uint16_t pc;         // program counter
   uint8_t *memory;     // RAM, pointer to sequence of unsigned char/uint8
   ConditionCodes_T cc;
+  Drivers_T drivers;
   uint8_t IE : 1;          // interrupt enabled flip flop
 };
 
 
-
-
-void UnimplementedInstruction(State8080_T state) {
+static void UnimplementedInstruction(State8080_T state) {
   // PC will have been incremented, so it should be decremented back
 
   fprintf (stderr, "Unimplemented instruction\n");
   exit(1);
 }
 
-uint8_t Parity(uint16_t target) {
+static uint8_t Parity(uint16_t target) {
   if (target % 2 == 0)
     return 1;
   return 0;
 }
 
-void UpdateCCSimple(State8080_T state, uint16_t result) {
+static void UpdateCCSimple(State8080_T state, uint16_t result) {
   state->cc->z = ((result & 0xff) == 0); // check if 0, AND with all 1s
   state->cc->s = ((result & 0x80) != 0); // check if bit 7 is set
   state->cc->c = (result > 0xff);        // check if sum > 256
   state->cc->p = Parity(result & 0xff);  // check parity
 }
 
-void UpdateCCZeroSignParity(State8080_T state, uint16_t result) {
+static void UpdateCCZeroSignParity(State8080_T state, uint16_t result) {
   state->cc->z = ((result & 0xff) == 0);
   state->cc->s = ((result & 0x80) != 0);
   state->cc->p = Parity(result & 0xff);
 }
 
-uint8_t GetRegister(State8080_T state, uint8_t reg) {
+static uint8_t GetRegister(State8080_T state, uint8_t reg) {
   switch (reg) {
   case 0x06: ;
     // H = high order bits, L = lower order bits, so shift H 8 bits up
@@ -91,7 +97,7 @@ uint8_t GetRegister(State8080_T state, uint8_t reg) {
   }
 }
 
-uint8_t AddToRegister (State8080_T state, uint8_t reg, uint8_t add) {
+static uint8_t AddToRegister (State8080_T state, uint8_t reg, uint8_t add) {
   switch (reg) {
   case 0x06: ;
     // H = high order bits, L = lower order bits, so shift H 8 bits up
@@ -106,7 +112,7 @@ uint8_t AddToRegister (State8080_T state, uint8_t reg, uint8_t add) {
   }
 }
 
-void MOV (State8080_T state) {
+static void MOV (State8080_T state) {
   unsigned char *opcode = &state->memory[state->pc];
   uint8_t dest = ((*opcode) & 0x38)>>3;
   uint8_t source = (*opcode) & 0x07;
@@ -130,7 +136,7 @@ void MOV (State8080_T state) {
   }
 }
 
-void MVI (State8080_T state) {
+static void MVI (State8080_T state) {
   unsigned char *opcode = &state->memory[state->pc];
   uint8_t dest = ((*opcode) & 0x38)>>3;
 
@@ -144,7 +150,7 @@ void MVI (State8080_T state) {
 }
 
 // ADD register r from opcode to accumulator (a)
-void ADD_R (State8080_T state) {
+static void ADD_R (State8080_T state) {
   unsigned char *opcode = &state->memory[state->pc];
   uint8_t reg = (*opcode) & 0x07;
   uint8_t reg_value = GetRegister(state, reg);
@@ -155,7 +161,7 @@ void ADD_R (State8080_T state) {
 }
 
 // ADD register r from opcode to accumulator (a) with carry
-void ADC_R (State8080_T state) {
+static void ADC_R (State8080_T state) {
   unsigned char *opcode = &state->memory[state->pc];
   uint8_t reg = (*opcode) & 0x07;
   uint8_t reg_value = GetRegister(state, reg);
@@ -166,7 +172,7 @@ void ADC_R (State8080_T state) {
 }
 
 // ANA register r, r & a -> a, set sign, zero, parity. carry = 0
-void ANA (State8080_T state) {
+static void ANA (State8080_T state) {
   uint8_t result;
   unsigned char *opcode = &state->memory[state->pc];
   uint8_t reg = (*opcode) & 0x07;
@@ -185,8 +191,8 @@ void ANA (State8080_T state) {
   state->cc->c = 0; // set carry to 0 just in case
 }
 
-// ANA register r, r & a -> a, set sign, zero, parity. carry = 0
-void XRA (State8080_T state) {
+// XRA register r, r ^ a -> a, set sign, zero, parity. carry = 0
+static void XRA (State8080_T state) {
   uint8_t result;
   unsigned char *opcode = &state->memory[state->pc];
   uint8_t reg = (*opcode) & 0x07;
@@ -207,7 +213,7 @@ void XRA (State8080_T state) {
 
 
 // INR register r from opcode
-void INR_R (State8080_T state) {
+static void INR_R (State8080_T state) {
   unsigned char *opcode = &state->memory[state->pc];
   uint8_t reg = ((*opcode) & 0x38)>>3;
 
@@ -230,7 +236,7 @@ void INR_R (State8080_T state) {
 }
 
 // DCR register r from opcode
-void DCR_R (State8080_T state) {
+static void DCR_R (State8080_T state) {
   unsigned char *opcode = &state->memory[state->pc];
   uint8_t reg = ((*opcode) & 0x38)>>3;
 
@@ -251,7 +257,7 @@ void DCR_R (State8080_T state) {
   }
 }
  
-void JMP_conditional (State8080_T state, uint8_t condition) {
+static void JMP_conditional (State8080_T state, uint8_t condition) {
    unsigned char *opcode = &state->memory[state->pc];
    if (condition) {
      uint16_t addr = (opcode[1] << 8) | (opcode[2] & 0xff);
@@ -261,7 +267,7 @@ void JMP_conditional (State8080_T state, uint8_t condition) {
      state->pc += 2;
 }
 
-void RET_conditional (State8080_T state, uint8_t condition) {
+static void RET_conditional (State8080_T state, uint8_t condition) {
   unsigned char *opcode = &state->memory[state->pc];
   if (condition) {
     // PCL(low order bits) <- sp, PCH <- sp + 1, SP <- sp + 2
@@ -272,7 +278,7 @@ void RET_conditional (State8080_T state, uint8_t condition) {
   }
 }
 
-void CALL_conditional (State8080_T state, uint8_t condition) {
+static void CALL_conditional (State8080_T state, uint8_t condition) {
   unsigned char *opcode = &state->memory[state->pc];
   if (condition) {
     // (sp - 1) <- PCH, (sp - 2) <- PCL, SP += 2, PC <- addr 
@@ -952,7 +958,8 @@ void Emulate8080Op(State8080_T state) {
     // data byte = port
     {
       uint8_t port = opcode[1];
-      state->registers[7] = MachineIN(state, port);
+
+      state->registers[7] = (*state->drivers->in[port]) ();
       state->pc += 1;
     }
     break;
@@ -960,7 +967,8 @@ void Emulate8080Op(State8080_T state) {
     // output device <- (A)
     {
       uint8_t port = opcode[1];
-      MachineOUT(state, opcode[1]);
+
+      (*state->drivers->out[port]) (state->registers[7]);
       state->pc += 1;
     }
     break;
@@ -1024,36 +1032,34 @@ State8080_T State8080_init () {
   return state;
 }
 
-
-void RunInstructionSet(unsigned char *code) {
-  // assume space invaders for now, can eventually adapt environments
-  State8080_T state = State8080_init();
-  
-  state->memory[0] = *code;
-
-  Emulate8080Op(state);
+uint8_t empty_IN () {
+  return 0;
 }
 
-int main(int argc, char **argv) {
-  char *filename = argv[1];
+void empty_OUT (uint8_t ac) {
+  return;
+}
 
-  FILE *f = fopen (filename, "rb");
-  //printf ("Opening the file\n");
+Drivers_T Drivers_init () {
+  Drivers_T drivers = (struct Drivers *) malloc (sizeof (struct Drivers));
 
-  if (f == NULL) {
-    fprintf (stderr, "Couldn't open %s\n", filename);
-    exit(1);
-  }
+  drivers->in[0] = empty_IN;
+  drivers->in[1] = empty_IN;
+  drivers->in[2] = empty_IN;
+  drivers->in[3] = empty_IN;
+  drivers->in[4] = empty_IN;
+  drivers->in[5] = empty_IN;
+  drivers->in[6] = empty_IN;
+  drivers->in[7] = empty_IN;
 
-  // get file size and read into buffer
-  fseek(f, 0L, SEEK_END);
-  int fsize = ftell(f);
-  fseek(f, 0L, SEEK_SET);
+  drivers->out[0] = empty_OUT;
+  drivers->out[1] = empty_OUT;
+  drivers->out[2] = empty_OUT;
+  drivers->out[3] = empty_OUT;
+  drivers->out[4] = empty_OUT;
+  drivers->out[5] = empty_OUT;
+  drivers->out[6] = empty_OUT;
+  drivers->out[7] = empty_OUT;
 
-  unsigned char *buffer = malloc(fsize * sizeof(char));
-
-  size_t bytesRead = fread(buffer, 1, fsize, f);
-  fclose(f);
-
-  RunInstructionSet(buffer);
+  return drivers;
 }
