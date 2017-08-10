@@ -6,8 +6,8 @@
 # Macros
 CC = gcc
 
-CFLAGS =
-# CFLAGS = -g
+#CFLAGS =
+CFLAGS = -g
 # CFLAGS = -D NDEBUG
 # CFLAGS = -D NDEBUG -O
 

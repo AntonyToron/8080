@@ -34,6 +34,8 @@ void LOAD_ROM_invaders (State8080_T state) {
 
 State8080_T INIT_STATE_invaders () {
   State8080_T state = State8080_init ();
+
+  State8080_config_drivers_default(state, ArcadeDrivers());
   
   return state;
 }
