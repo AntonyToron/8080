@@ -26,3 +26,7 @@ void State8080_config_drivers_in_port(State8080_T state, uint8_t (*in) (), uint8
 void State8080_config_drivers_out_port(State8080_T state, void (*out) (uint8_t), uint8_t port);
 
 void State8080_config_drivers_default(State8080_T state, Drivers_T drivers);
+
+void config_drivers_in_port(Drivers_T drivers, uint8_t (*in) (), uint8_t port);
+
+void config_drivers_out_port(Drivers_T drivers, void (*out) (uint8_t), uint8_t port);

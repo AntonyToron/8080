@@ -21,6 +21,40 @@ struct ConditionCodes { // specifying bit count (1 bit flags/flip flops)
   // IE: flip flop for interrupt enabled
 };
 
+// PORT INFORMATION FOR 8080
+
+/* Ports:     */
+/*     Read 1     */
+/*     BIT 0   coin (0 when active)     */
+/*         1   P2 start button     */
+/*         2   P1 start button     */
+/*         3   ?     */
+/*         4   P1 shoot button     */
+/*         5   P1 joystick left     */
+/*         6   P1 joystick right     */
+/*         7   ? */
+
+/*     Read 2     */
+/*     BIT 0,1 dipswitch number of lives (0:3,1:4,2:5,3:6)     */
+/*         2   tilt 'button'     */
+/*         3   dipswitch bonus life at 1:1000,0:1500     */
+/*         4   P2 shoot button     */
+/*         5   P2 joystick left     */
+/*         6   P2 joystick right     */
+/*         7   dipswitch coin info 1:off,0:on     */
+
+/*     Read 3      shift register result     */
+
+/*     Write 2     shift register result offset (bits 0,1,2)     */
+/*     Write 3     sound related     */
+/*     Write 4     fill shift register     */
+/*     Write 5     sound related     */
+/*     Write 6     strange 'debug' port? eg. it writes to this port when     */
+/*             it writes text to the screen (0=a,1=b,2=c, etc)     */
+
+/*     (write ports 3,5,6 can be left unemulated, read port 1=$01 and 2=$00     */
+/*     will make the game run, but but only in attract mode)  */ 
+
 // describe the behavior for each respective port
 // in should return a value to read into accumulator
 // out takes value to put into output
@@ -1180,4 +1214,11 @@ void State8080_config_drivers_out_port(State8080_T state, void (*out) (uint8_t),
 
 void State8080_config_drivers_default(State8080_T state, Drivers_T drivers) {
   state->drivers = drivers;
+}
+void config_drivers_in_port(Drivers_T drivers, uint8_t (*in) (), uint8_t port) {
+  drivers->in[port] = in;
+}
+
+void config_drivers_out_port(Drivers_T drivers, void (*out) (uint8_t), uint8_t port) {
+  drivers->out[port] = out;
 }
