@@ -11,7 +11,7 @@ CFLAGS =
 # CFLAGS = -D NDEBUG
 # CFLAGS = -D NDEBUG -O
 
-LIBS = -lGL -lGLEW -lglfw -lglm
+LIBS = -lGL -lGLEW -lglfw
 
 # Pattern rule, any .o file with .c file of same name will assume it
 # %.o: %.c
@@ -33,7 +33,7 @@ arcade: 8080Arcade.o CPU.o Utils.o
 disassemble: disassemble.o disassembler.o
 	$(CC) $(CFLAGS) $< disassembler.o -o $@
 playground: playground.o
-	$(CPP) $(CFLAGS) $< -o $@
+	$(CPP) $(CFLAGS) $< -o $@ $(LIBS)
 
 # object file dependencies in recipes for all binary files
 8080Arcade.o: 8080Arcade.c CPU.h Utils.h
