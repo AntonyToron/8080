@@ -11,7 +11,6 @@
 #include <stdlib.h>
 #include "CPU.h"
 
-int debug = 1;
 
 struct ConditionCodes { // specifying bit count (1 bit flags/flip flops)
   uint8_t z : 1;   // zero flag
@@ -1137,17 +1136,15 @@ void Emulate8080Op(State8080_T state, unsigned char *opcode) {
   }
   
   //  PRINT CURRENT INSTRUCTION AND STATE
-  if (debug) {
-    printf("\t CURRENT INSTRUCTION: $%02x\n", *opcode);
+  printf("\t CURRENT INSTRUCTION: $%02x\n", *opcode);
   
-    printf("\t CURRENT STATE: \n");
-    
-    printf("\tC=%d, P=%d, S=%d, Z = %d, IE = %d\n", state->cc->c, state->cc->p, state->cc->s, state->cc->z, state->IE);
-    printf("\tA $%02x B $%02x C $%02x D $%02x E $%02x H $%02x L $%02x SP %04x PC  %04x\n", state->registers[7], state->registers[0], state->registers[1], state->registers[2], state->registers[3], state->registers[4], state->registers[5], state->sp, state->pc);
-
-    printf("\n");
-  }
- 
+  printf("\t CURRENT STATE: \n");
+  
+  printf("\tC=%d, P=%d, S=%d, Z = %d, IE = %d\n", state->cc->c, state->cc->p, state->cc->s, state->cc->z, state->IE);
+  printf("\tA $%02x B $%02x C $%02x D $%02x E $%02x H $%02x L $%02x SP %04x PC  %04x\n", state->registers[7], state->registers[0], state->registers[1], state->registers[2], state->registers[3], state->registers[4], state->registers[5], state->sp, state->pc);
+  
+  printf("\n");
+  
   fflush(stdout);
 }
 
@@ -1157,8 +1154,7 @@ void Emulate8080State(State8080_T state) {
   // get opcode from memory at PC, PC steps away from start of memory
   opcode = &state->memory[state->pc];
 
-  if (debug)
-    printf("Executing $%02x", *opcode);
+  printf("Executing $%02x", *opcode);
 
   Emulate8080Op(state, opcode);
 }
