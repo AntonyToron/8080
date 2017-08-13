@@ -38,3 +38,7 @@ uint8_t State8080_ie(State8080_T state);
 void State8080_pushInterrupt(State8080_T state, uint8_t int_num);
 
 uint8_t State8080_popInterrupt(State8080_T state);
+
+int op_clockCycles(State8080_T state);
+
+uint8_t *pointerToMemoryAt(State8080_T state, uint16_t addr);

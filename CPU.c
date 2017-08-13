@@ -11,6 +11,8 @@
 #include <stdlib.h>
 #include "CPU.h"
 
+int debug = 1;
+
 struct ConditionCodes { // specifying bit count (1 bit flags/flip flops)
   uint8_t z : 1;   // zero flag
   uint8_t s : 1;   // sign flag (0 = POSITIVE, 1 = NEGATIVE)
@@ -1135,15 +1137,17 @@ void Emulate8080Op(State8080_T state, unsigned char *opcode) {
   }
   
   //  PRINT CURRENT INSTRUCTION AND STATE
-  printf("\t CURRENT INSTRUCTION: $%02x\n", *opcode);
+  if (debug) {
+    printf("\t CURRENT INSTRUCTION: $%02x\n", *opcode);
   
-  printf("\t CURRENT STATE: \n");
-  
-  printf("\tC=%d, P=%d, S=%d, Z = %d, IE = %d\n", state->cc->c, state->cc->p, state->cc->s, state->cc->z, state->IE);
-  printf("\tA $%02x B $%02x C $%02x D $%02x E $%02x H $%02x L $%02x SP %04x PC  %04x\n", state->registers[7], state->registers[0], state->registers[1], state->registers[2], state->registers[3], state->registers[4], state->registers[5], state->sp, state->pc);
+    printf("\t CURRENT STATE: \n");
+    
+    printf("\tC=%d, P=%d, S=%d, Z = %d, IE = %d\n", state->cc->c, state->cc->p, state->cc->s, state->cc->z, state->IE);
+    printf("\tA $%02x B $%02x C $%02x D $%02x E $%02x H $%02x L $%02x SP %04x PC  %04x\n", state->registers[7], state->registers[0], state->registers[1], state->registers[2], state->registers[3], state->registers[4], state->registers[5], state->sp, state->pc);
 
-  printf("\n");
-
+    printf("\n");
+  }
+ 
   fflush(stdout);
 }
 
@@ -1153,7 +1157,8 @@ void Emulate8080State(State8080_T state) {
   // get opcode from memory at PC, PC steps away from start of memory
   opcode = &state->memory[state->pc];
 
-  printf("Executing $%02x", *opcode);
+  if (debug)
+    printf("Executing $%02x", *opcode);
 
   Emulate8080Op(state, opcode);
 }
@@ -1266,4 +1271,402 @@ void State8080_pushInterrupt(State8080_T state, uint8_t int_num) {
 
 uint8_t State8080_popInterrupt(State8080_T state) {
   return state->interrupts[0];
+}
+
+// ----------------------- CYCLES INFO ON CPU ---------------------
+int op_clockCycles(State8080_T state) {
+  unsigned char *opcode;
+  opcode = &state->memory[state->pc];
+  
+  switch (*opcode) {
+  case 0x00:               // NOP
+    return 4;      
+    // --------------- MOVE/LOADS/STORES ----------------------
+    
+    // TODO: FORMAT THESE COMMENTS FOR MOV PROPERLY
+    // -------------------- MOV -------------------------------
+  case 0x40:               // MOV B, B
+  case 0x41:               // MOV B, C
+  case 0x42:               // MOV B, D
+  case 0x43:               // MOV B, E
+  case 0x44:               // MOV B, H
+  case 0x45:               // MOV B, L
+    return 5;
+  case 0x46:               // MOV B, Memory
+    return 7;
+  case 0x47:               // MOV B, Accumulator
+  case 0x48:               // MOV C, B
+  case 0x49:               // MOV C, C
+  case 0x4A:               // MOV B, C
+  case 0x4B:               // MOV B, D
+  case 0x4C:               // MOV B, E
+  case 0x4D:               // MOV B, C
+    return 5;
+  case 0x4E:               // MOV C, Memory
+    return 7;
+  case 0x4F:               // MOV B, E
+  case 0x50:               // MOV B, 
+  case 0x51:               // MOV B, C
+  case 0x52:               // MOV B, D
+  case 0x53:               // MOV B, E
+  case 0x54:               // MOV B, H
+  case 0x55:               // MOV B, L
+    return 5;
+  case 0x56:               // MOV D, Memory
+    return 7;
+  case 0x57:               // MOV B, Accumulator
+  case 0x58:
+  case 0x59:               // MOV B, E
+  case 0x5A:               // MOV B, C
+  case 0x5B:               // MOV B, D
+  case 0x5C:               // MOV B, E
+  case 0x5D:               // MOV B, C
+    return 5;
+  case 0x5E:               // MOV E, Memory
+    return 7;
+  case 0x5F:               // MOV B, E
+  case 0x60:               // MOV B, 
+  case 0x61:               // MOV B, C
+  case 0x62:               // MOV B, D
+  case 0x63:               // MOV B, E
+  case 0x64:               // MOV B, H
+  case 0x65:               // MOV B, L
+    return 5;
+  case 0x66:               // MOV B, Memory
+    return 7;
+  case 0x67:               // MOV B, Accumulator
+  case 0x68:
+  case 0x69:               // MOV B, E
+  case 0x6A:               // MOV B, C
+  case 0x6B:               // MOV B, D
+  case 0x6C:               // MOV B, E
+  case 0x6D:               // MOV B, C
+    return 5;
+  case 0x6E:               // MOV B, D
+    return 7;
+  case 0x6F:               // MOV B,
+  case 0x70:               // MOV M, B
+  case 0x71:               // MOV M, C
+  case 0x72:               // MOV M, D
+  case 0x73:               // MOV M, E
+  case 0x74:               // MOV M, H
+  case 0x75:               // MOV M, L
+  case 0x77:               // MOV M, Accumulator
+    return 7;
+  case 0x78:
+  case 0x79:               // MOV B, E
+  case 0x7A:               // MOV B, C
+  case 0x7B:               // MOV B, D
+  case 0x7C:               // MOV B, E
+  case 0x7D:               // MOV B, C
+    return 5;
+  case 0x7E:               // MOV B, D
+    return 7;
+  case 0x7F:               // MOV B, E
+    return 5;
+
+    // --------------------- MVI ------------------------------
+  case 0x06:               // MVI B, move immediate to B
+  case 0x0E:               // MVI C, move immediate to C
+  case 0x16:               // MVI D, move immediate to D
+  case 0x1E:               // MVI E, move immediate to E
+  case 0x26:               // MVI H, move immediate to H
+  case 0x2E:               // MVI L, move immediate to L
+    return 7;
+  case 0x36:               // MVI memory, move immediate to memory
+    return 10;
+  case 0x3E:               // MVI A, move immediate to accumulator
+    return 7;
+
+    // ---------------------- LXI -----------------------------  
+  case 0x01:               // LXI B, word
+  case 0x11:               // LXI D, word
+  case 0x21:               // LXI H, word
+    return 10;
+    // --------------------- STAX -----------------------------
+  case 0x02:               // STAX B, store A indirect
+    return 7;
+  
+    // --------------------- LDAX -----------------------------
+
+  case 0x0A:               // LDAX B, load A indirect
+  case 0x1A:               // LDAX D, load A indirect
+    return 7;
+
+    // ----------------------- STA -----------------------------
+
+  case 0x32:               // STA, store A direct
+    return 13;
+
+    // ----------------------- LDA -----------------------------
+
+  case 0x3A:               // LDA, load A direct
+    return 13;
+
+  case 0xEB:               // XCHG, exchange DE HL
+    return 4;
+
+    // -------------------- STACK OPS ---------------------------
+
+    // --------------------- PUSH------------------------------
+  case 0xC5:               // PUSH B, push register BC on stack
+  case 0xD5:               // PUSH D, push register DE on stack
+  case 0xE5:               // PUSH H, push register HL on stack 
+  case 0xF5:               // PUSH PSW, push A and flags on stack
+    return 11;
+    
+    // --------------------- POP --------------------------------
+  case 0xC1:               // POP B, pops 16 bits off stack into BC
+  case 0xD1:               // POP D, pops 16 bits off stack into DE
+  case 0xE1:               // POP H, pops 16 bits off stack into HF
+  case 0xF1:               // POP PSW, pop a and flags off stack
+    return 10;
+
+  case 0xF9:              // SPHL, HL to stack pointer
+    return 5;
+  case 0x31:              // LXI SP, load immediate stack pointer
+    return 10;
+    
+    // -------------------- JUMP -------------------------------
+  case 0xC3:              // JMP, unconditional
+  case 0xDA:              // JC, jump on carry
+  case 0xD2:              // JNC, jump on no carry
+  case 0xCA:              // JZ, jump on zero
+  case 0xC2:              // JNZ, jump on no zero
+  case 0xF2:              // JP, jump on positive
+  case 0xFA:              // JM, jump on negative
+  case 0xEA:              // JPE, jump on parity even
+  case 0xE2:              // JPO, jump on parity odd
+    return 10;
+  case 0xE9:              // PCHL, HL to program counter
+    return 5;
+    // ---------------------- CALL ------------------------------
+  case 0xCD:               // CALL, call unconditional
+    return 17;
+  case 0xDC:               // CC, call on carry
+    if (state->cc->c)
+      return 17;
+    return 11;
+  case 0xD4:               // CNC, call on no carry
+    if (state->cc->c== 0)
+      return 17;
+    return 11;
+  case 0xCC:               // CZ, call on zero
+    if (state->cc->z)
+      return 17;
+    return 11;
+  case 0xC4:               // CNZ, call on no zero
+    if (state->cc->z== 0)
+      return 17;
+    return 11;
+  case 0xF4:               // CP, call on positive
+    if (state->cc->s== 0)
+      return 17;
+    return 11;
+  case 0xFC:               // CM, call on negative
+    if (state->cc->s)
+      return 17;
+    return 11;
+  case 0xEC:               // CPE, call on parity even
+    if (state->cc->p)
+      return 17;
+    return 11;
+  case 0xE4:               // CPO, call on parity odd
+    if (state->cc->p== 0)
+      return 17;
+    return 11;
+    
+    // ---------------------- RETURN ----------------------------
+
+    // ---------------------- RET -------------------------------
+  case 0xC9:               // RET, return
+    return 10;
+  case 0xD8:               // RC, return on carry
+    if (state->cc->c)
+      return 11;
+    return 5;
+  case 0xD0:               // RNC, return on no carry
+    if (state->cc->c == 0)
+      return 11;
+    return 5;
+  case 0xC8:               // RZ, return on zero
+    if (state->cc->z)
+      return 11;
+    return 5;
+  case 0xC0:               // RNZ, return on no zero
+    if (state->cc->z == 0)
+      return 11;
+    return 5;
+  case 0xF0:               // RP, return on positive
+    if (state->cc->s == 0)
+      return 11;
+    return 5;
+  case 0xF8:               // RM, return on negative
+    if (state->cc->s)
+      return 11;
+    return 5;
+  case 0xE0:               // RPO, return on parity odd
+    if (state->cc->p == 0)
+      return 11;
+    return 5;
+  case 0xE8:               // RPE, return on parity even
+    if (state->cc->p)
+      return 11;
+    return 5;
+
+    // ---------------------- RESTART ---------------------------
+
+  case 0xC7:               // RST 0
+  case 0xCF:               // RST 1
+  case 0xD7:               // RST 2
+  case 0xDF:               // RST 3
+  case 0xE7:               // RST 4
+  case 0xEF:               // RST 5
+  case 0xF7:               // RST 6
+  case 0xFF:               // RST 7
+    return 11;
+    
+    // --------------- INCREMENTS/DECREMENTS --------------------
+
+    // --------------------- INR --------------------------------
+  case 0x04:               // INR B, increment register
+  case 0x0C:               // INR C, increment register
+  case 0x14:               // INR D, increment register
+  case 0x1C:               // INR E, increment register
+  case 0x24:               // INR H, increment register
+  case 0x2C:               // INR L, increment register
+    return 5;
+  case 0x34:               // INR M, increment memory register
+    return 10;
+  case 0x3C:               // INR A, increment accumulator
+    return 5;
+
+    // ---------------------- DCR -------------------------------
+  case 0x05:               // DCR B, decrement register
+  case 0x0D:               // DCR C, decrement register
+  case 0x15:               // DCR D, decrement register
+  case 0x1D:               // DCR E, decrement register
+  case 0x25:               // DCR H, decrement register
+  case 0x2D:               // DCR L, decrement register
+    return 5;
+  case 0x35:               // DCR M, decrement memory register
+    return 10;
+  case 0x3D:               // DCR A, decrement accumulator
+    return 5;
+
+    // ---------------------- INX -------------------------------
+  case 0x03:               // INX B, increment BC
+  case 0x13:               // INX D, increment DE
+  case 0x23:               // INX H, increment HL
+    return 5;
+      
+    // ----------------------- DCX -----------------------------
+  case 0x0B:               // DCX B, decrement BC
+  case 0x1B:               // DCX D, decrement DE
+  case 0x2B:               // DCX H, decrement HL
+    return 5;
+
+    // ------------------------ADDS------------------------------
+
+    // -----------------------ADD r------------------------------
+  case 0x80:               // ADD B, represented as 1000 0SSS, since B = 000
+  case 0x81:               // ADD C
+  case 0x82:               // ADD D
+  case 0x83:               // ADD E
+  case 0x84:               // ADD H
+  case 0x85:               // ADD L
+    return 4;
+  case 0x86:               // ADD M, add from memory ("memory register")
+    return 7;
+  case 0x87:               // ADD accumulator
+    return 4;
+    
+    // ----------------------- ADC -------------------------------
+  case 0x88:               // ADC B, add to A with carry
+  case 0x89:               // ADC C, add to A with carry
+  case 0x8A:               // ADC D, add to A with carry
+  case 0x8B:               // ADC E, add to A with carry
+  case 0x8C:               // ADC H, add to A with carry
+  case 0x8D:               // ADC L, add to A with carry
+    return 4;
+  case 0x8E:               // ADC M, add memory to A with carry
+    return 7;
+  case 0x8F:               // ADC A, add accumulator to A with carry
+    return 4;
+    
+    // ---------------------- ADI --------------------------------
+  case 0xC6:               // ADI byte, add immediate
+  case 0xCE:               // ACI, add immediate to A with carry
+    return 7;
+
+    // ------------------------ DAD ---------------------------
+  case 0x09:              // DAD B, BC + HL --> HL, updates only carry flag
+  case 0x19:              // DAD D, DE + HL --> HL, updates only carry flag
+  case 0x29:              // DAD H, HL + HL --> HL, updates only carry flag
+  case 0x39:              // DAD SP, SP + HL --> HL, updates only carry flag
+    return 10;
+
+    // ------------------- SUBTRACTS --------------------------
+
+    // ------------------- LOGICAL ----------------------------
+
+    // ----------------------- ANA ----------------------------
+  case 0xA0:              // ANA B, AND register with A, goes into A
+  case 0xA1:              // ANA C, AND register with A, goes into A
+  case 0xA2:              // ANA D, AND register with A, goes into A
+  case 0xA3:              // ANA E, AND register with A, goes into A
+  case 0xA4:              // ANA H, AND register with A, goes into A
+  case 0xA5:              // ANA L, AND register with A, goes into A
+    return 4;
+  case 0xA6:              // ANA Memory, AND register with A, goes into A
+    return 7;
+  case 0xA7:              // ANA A, AND register with A, goes into A
+    return 4;
+
+    // ----------------------- XRA ----------------------------
+  case 0xA8:              // XRA B, XOR register with A, goes into A
+  case 0xA9:              // XRA C, XOR register with A, goes into A
+  case 0xAA:              // XRA D, XOR register with A, goes into A
+  case 0xAB:              // XRA E, XOR register with A, goes into A
+  case 0xAC:              // XRA H, XOR register with A, goes into A
+  case 0xAD:              // XRA L, XOR register with A, goes into A
+    return 4;
+  case 0xAE:              // XRA Memory, XOR register with A, goes into A
+    return 7;
+  case 0xAF:              // XRA A, XOR register with A, goes into A
+    return 4;
+
+    // ----------------------- ANI ----------------------------
+  case 0xE6:              // ANI, and immediate with A
+
+    // ------------------------ CPI ---------------------------
+  case 0xFE:              // CPI, compare immediate with A
+    return 7;
+    
+    // ------------------- ROTATE -----------------------------
+  case 0x0F:              // RRC, rotate A right
+    return 4;
+
+    // ------------------ INPUT/OUTPUT -------------------------
+    // TODO: THESE ARE TEMPORARY PLACE HOLDERS FOR THESE FUNCTIONS
+    // SHOULD BE MOVED OUTSIDE
+  case 0xDB: ;            // IN, input
+  case 0xD3:              // OUT, output
+    return 10;
+
+    // --------------------- CONTROL -----------------------------
+  case 0xFB:              // EL, enable interrupts
+  case 0xF3:              // DI, disable interrupts
+    return 4;
+  case 0x76:              // HLT, halt
+    return 7;
+  default:
+    UnimplementedInstruction(state);
+  }
+}
+
+uint8_t *pointerToMemoryAt(State8080_T state, uint16_t addr) {
+  uint8_t *memory = &state->memory[addr];
+
+  return memory;
 }
