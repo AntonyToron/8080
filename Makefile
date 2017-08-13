@@ -29,22 +29,24 @@ clean:
 
 # Dependency rules for file targets
 # include all files ncessary for building in -o shortcut case
-c_arcade: 8080Arcade.o CPU.o Utils.o
-	$(CC) $(CFLAGS) $< CPU.o Utils.o -o $@
+c_arcade: 8080Arcade.o CPU.o Utils.o Drivers.o
+	$(CC) $(CFLAGS) $< CPU.o Utils.o Drivers.o -o $@
 disassemble: disassemble.o disassembler.o
 	$(CC) $(CFLAGS) $< disassembler.o -o $@
 
 playground: playground.o
 	$(CPP) $(CFLAGS) $< -o $@ $(LIBS)
-arcade: arcade_machine.o CPU.o Utils.o
-	$(CPP) $(CFLAGS) $< CPU.o Utils.o -o $@ $(LIBS)
+arcade: arcade_machine.o CPU.o Utils.o Drivers.o
+	$(CPP) $(CFLAGS) $< CPU.o Utils.o Drivers.o -o $@ $(LIBS)
 
 # object file dependencies in recipes for all binary files
-8080Arcade.o: 8080Arcade.c CPU.h Utils.h
+8080Arcade.o: 8080Arcade.c CPU.h Utils.h Drivers.h
 	$(CC) $(CFLAGS) -c $<
 CPU.o: CPU.c CPU.h
 	$(CC) $(CFLAGS) -c $<
 Utils.o: Utils.c Utils.h
+	$(CC) $(CFLAGS) -c $<
+Drivers.o: Drivers.c Drivers.h
 	$(CC) $(CFLAGS) -c $<
 
 playground.o: playground.cpp

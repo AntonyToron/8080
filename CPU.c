@@ -1139,7 +1139,7 @@ void Emulate8080Op(State8080_T state, unsigned char *opcode) {
   
   printf("\t CURRENT STATE: \n");
   
-  printf("\tC=%d, P=%d, S=%d, Z = %d\n", state->cc->c, state->cc->p, state->cc->s, state->cc->z);
+  printf("\tC=%d, P=%d, S=%d, Z = %d, IE = %d\n", state->cc->c, state->cc->p, state->cc->s, state->cc->z, state->IE);
   printf("\tA $%02x B $%02x C $%02x D $%02x E $%02x H $%02x L $%02x SP %04x PC  %04x\n", state->registers[7], state->registers[0], state->registers[1], state->registers[2], state->registers[3], state->registers[4], state->registers[5], state->sp, state->pc);
 
   printf("\n");

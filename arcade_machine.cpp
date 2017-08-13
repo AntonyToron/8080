@@ -16,6 +16,9 @@ extern "C" {
 extern "C" {
   #include "Utils.h"
 }
+extern "C" {
+  #include "Drivers.h"
+}
 
 #include <string.h>
 #include <thread>
@@ -26,15 +29,46 @@ const unsigned int H = 200;
 
 State8080_T state = NULL;
 bool CPU_on = false;
+bool hardware_interrupt = false;
+
 
 // -------------------------- STATE INITIALIZATION ---------------------
 
 // implement drivers
-Drivers_T ArcadeDrivers () {
+Drivers_T DefaultDrivers () {
   Drivers_T drivers = Drivers_init();
 
   return drivers;
 }
+
+// -------------------------- ARCADE CONFIGS --------------------------
+
+static ArcadeMachinePorts_T am_ports;
+
+void ArcadeOut4 (uint8_t ac) {
+  Arcade8080_write4 (ac, am_ports);
+}
+
+void ArcadeOut2 (uint8_t ac) {
+  Arcade8080_write2 (ac, am_ports);
+}
+
+uint8_t ArcadeRead3 () {
+  return Arcade8080_read3(am_ports);
+}
+
+Drivers_T ArcadeDrivers() {
+  Drivers_T drivers = Drivers_init();
+  am_ports = am_ports_init();
+
+  // shift registers
+  config_drivers_out_port(drivers, &ArcadeOut4, 4);
+  config_drivers_out_port(drivers, &ArcadeOut2, 2);
+  config_drivers_in_port(drivers, &ArcadeRead3, 3);
+  
+  return drivers;
+}
+
 
 // -------------------------- INVADERS STATE ----------------------------
 
@@ -51,6 +85,8 @@ void LOAD_ROM_invaders (State8080_T state) {
 
 State8080_T INIT_STATE_invaders () {
   state = State8080_init ();
+
+  State8080_config_drivers_default(state, ArcadeDrivers());
   
   return state;
 }
@@ -138,7 +174,8 @@ void processorThread() {
   fflush(stdout);
 
   while (CPU_on) {
-    if (State8080_ie(state)) { // check if interrupts enabled
+    // check if interrupts enabled, and an interrupt happened
+    if (State8080_ie(state) && hardware_interrupt) { 
 
       printf ("Got an interrupt");
       
@@ -157,8 +194,7 @@ void processorThread() {
       Emulate8080State(state);
       fflush(stdout);
     }
-  }
-  
+  } 
 }
 
 
