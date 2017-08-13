@@ -56,6 +56,6 @@ int main(int argc, char **argv) {
   // BEGIN EMULATION
   while (1) {
     
-    Emulate8080Op(state);
+    Emulate8080State(state);
   }
 }

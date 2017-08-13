@@ -10,7 +10,7 @@
 #include <stddef.h>
 #include <stdlib.h>
 
-unsigned char * readFileIntoBuffer(char *filename) {
+unsigned char * readFileIntoBuffer(const char *filename) {
   FILE *f = fopen (filename, "rb");
   //printf ("Opening the file\n");
 

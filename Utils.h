@@ -6,4 +6,4 @@
  */
 
 
-unsigned char * readFileIntoBuffer(char *filename);
+unsigned char * readFileIntoBuffer(const char *filename);
