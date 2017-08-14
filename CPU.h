@@ -35,6 +35,8 @@ void config_drivers_out_port(Drivers_T drivers, void (*out) (uint8_t), uint8_t p
 
 uint8_t State8080_ie(State8080_T state);
 
+void State8080_setIE(State8080_T state, uint8_t val);
+
 void State8080_pushInterrupt(State8080_T state, uint8_t int_num);
 
 uint8_t State8080_popInterrupt(State8080_T state);

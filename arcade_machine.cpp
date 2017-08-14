@@ -27,6 +27,9 @@ extern "C" {
 #include <thread>
 #include <GL/glut.h>
 
+const int RGB_ON = 0xFFFFFFFF;
+const int RGB_OFF = 0x00000000;
+
 const unsigned int W = 224;
 const unsigned int H = 256;
 double clock_time_miliseconds = 1000.0 / 2000000.0;
@@ -36,7 +39,7 @@ bool CPU_on = false;
 bool hardware_interrupt = false;
 
 // DISPLAY
-unsigned char windowPixels[W * H][3];
+unsigned char windowPixels[W * H * 4];
 
 
 // -------------------------- STATE INITIALIZATION ---------------------
@@ -117,6 +120,8 @@ void INITIALIZE_PROCESSOR(State8080_T state, char **argv) {
 // ----------------------- MACHINE INFORMATION --------------------
 
 void render() {
+  int i, j;
+  
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
   //glBegin(GL_TRIANGLES);
@@ -131,36 +136,27 @@ void render() {
   uint16_t startVideoMemory = 0x2400;
   uint8_t *videoMemory = pointerToMemoryAt(state, startVideoMemory);
 
-  // check if video memory has any bits
-  for (int i = 0; i < ((H / 8) * W); i++) {
-    if (videoMemory[i] > 0) {
-      printf ("White\n");
-    }
-  }
-
   // copy into window
-  for (int i = 0; i < 224; i++) {
-    for (int j = 0; j < 256; j += 8) {
+  for (i = 0; i < 224; i++) {
+    for (j = 0; j < 256; j+=8) {
       int p;
       // Read first 1-bit pixel, divide by 8 bc 8 pixels in byte
-      unsigned char pix = videoMemory[(i*(256/8)) + j/8];
+      unsigned char pix = videoMemory[(i * (256/8)) + j/8];
 
-      if (pix > 0) {
-	printf ("Should be white");
-      }
-      
       // 8 output vertical pixels --> vertical flip, j start at last line
       int offset = (255-j)*(224*4) + (i*4);
-      unsigned char *p1 = (unsigned char *)(&windowPixels[offset]);
+      unsigned int *p1 = (unsigned int *)(&windowPixels[offset]);
       for (p = 0; p < 8; p++) {
 	if (0 != (pix & (1 << p))) { // white pixel
-	  p1[0] = 255;
-	  p1[1] = 255;
-	  p1[2] = 255;
-
-	  printf ("Got a white pixel");
+	  //windowPixels[offset][0] = 255;
+	  //windowPixels[offset][1] = 255;
+	  //windowPixels[offset][2] = 255;
+	  *p1 = RGB_ON;
+	  
 	  fflush(stdout);
 	}
+	else
+	  *p1 = RGB_OFF;
 	p1 -= 224;
 	
       }
@@ -198,8 +194,16 @@ void processSpecialKeys(int key, int x, int y) {
 }
 
 void graphicsInterrupt() {
-  //printf ("Hi");
-  //fflush(stdout);
+  // set IE to true
+  //unsigned char IE = 0xFB;
+  //Emulate8080Op(state, &IE);
+
+  State8080_setIE(state, 1);
+
+  // say that it was from hardware
+  hardware_interrupt = true;
+
+  State8080_pushInterrupt(state, 2); // graphics interrupt 
 }
 
 void graphicsThread(int argc, char **argv) {
@@ -213,7 +217,7 @@ void graphicsThread(int argc, char **argv) {
   
   // register callbacks
   glutDisplayFunc(render);
-  //glutIdleFunc(render);
+  glutIdleFunc(render);
 
   // external entries callbacks
   glutKeyboardFunc (processNormalKeys);
@@ -231,9 +235,8 @@ void hardwareThread() {
   for (;;) {
     graphicsInterrupt();
 
-    
-    
-    usleep(1000000);
+        
+    usleep(16670);
   }
 }
 
@@ -244,17 +247,20 @@ void processorThread() {
   while (CPU_on) {
     // check if interrupts enabled, and an interrupt happened
     if (State8080_ie(state) && hardware_interrupt) { 
-
+      hardware_interrupt = false;
+      
       printf ("Got an interrupt");
       
-      // get interrupt set by hardware
-      unsigned char op = State8080_popInterrupt(state) << 3; // 00AAA000
+      // get interrupt set by hardware  11AAA111
+      unsigned char op = (State8080_popInterrupt(state) << 3) | 0xC7;
+
       Emulate8080Op(state, &op);
 
-      unsigned char DI = 0xF3;
+      //unsigned char DI = 0xF3;
       
       // DI
-      Emulate8080Op(state, &DI);
+      //Emulate8080Op(state, &DI);
+      State8080_setIE(state, 1);
 
       fflush(stdout);
     }

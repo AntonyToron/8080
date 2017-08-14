@@ -320,12 +320,13 @@ static void CALL_conditional (State8080_T state, uint8_t condition) {
 
   state->pc += 1; // for op
   if (condition) {
-    // (sp - 1) <- PCH, (sp - 2) <- PCL, SP += 2, PC <- addr
-    state->sp += 2; // for data bytes
+    // (sp - 1) <- PCH, (sp - 2) <- PCL, SP -= 2, PC <- addr
+    state->pc += 2; // for data bytes
     
     state->memory[state->sp - 1] = (state->pc >> 8) & 0xff;
     state->memory[state->sp - 2] = (uint8_t) (state->pc & 0x00ff);
 
+    state->sp -= 2;
     
     state->pc = (opcode[2] << 8) | (opcode[1] & 0xff); // little-endian
   }
@@ -342,17 +343,15 @@ void MachineOUT (State8080_T state, uint8_t port) {
 }
 
 // similar to call, but calls interrupt code
-void RST (State8080_T state) {
-  unsigned char *opcode = &state->memory[state->pc];
-  
+void RST(State8080_T state, uint8_t opcode) {  
   // push program counter
-  state->memory[state->sp - 1] = (uint8_t) (state->pc >> 8);
-  state->memory[state->sp - 2] = (uint8_t) (state->pc && 0x00ff);
+  state->memory[state->sp - 1] = (state->pc >> 8) & 0xff;
+  state->memory[state->sp - 2] = (uint8_t) (state->pc & 0x00ff);
   
-  state->sp += 2;
+  state->sp -= 2;
 
   // 11AAA111 -> 00AAA000
-  uint16_t addr = (opcode[0] & 0x38) & 0xffff;
+  uint16_t addr = (opcode & 0x38) & 0xffff;
   state->pc = addr;
 }
 
@@ -792,7 +791,7 @@ void Emulate8080Op(State8080_T state, unsigned char *opcode) {
   case 0xEF:               // RST 5
   case 0xF7:               // RST 6
   case 0xFF:               // RST 7
-    RST(state);
+    RST(state, *opcode);
     break;
     
     // --------------- INCREMENTS/DECREMENTS --------------------
@@ -1089,10 +1088,15 @@ void Emulate8080Op(State8080_T state, unsigned char *opcode) {
     state->pc += 1;
     break;
 
+    // -------------------- SPECIALS ---------------------------
+  case 0x37:              // STC, set carry
+    state->cc->c = 1;
+    break;
+
     // ------------------ INPUT/OUTPUT -------------------------
     // TODO: THESE ARE TEMPORARY PLACE HOLDERS FOR THESE FUNCTIONS
     // SHOULD BE MOVED OUTSIDE
-  case 0xDB: ;            // IN, input
+  case 0xDB:              // IN, input
     // (A) <- input device
     // data byte = port
     {
@@ -1119,7 +1123,7 @@ void Emulate8080Op(State8080_T state, unsigned char *opcode) {
     break;
 
     // --------------------- CONTROL -----------------------------
-  case 0xFB:              // EL, enable interrupts
+  case 0xFB:              // EI, enable interrupts
     state->IE = 1;
     state->pc += 1;
     break;
@@ -1155,6 +1159,7 @@ void Emulate8080State(State8080_T state) {
   opcode = &state->memory[state->pc];
 
   printf("Executing $%02x", *opcode);
+  fflush(stdout);
 
   Emulate8080Op(state, opcode);
 }
@@ -1259,6 +1264,10 @@ void config_drivers_out_port(Drivers_T drivers, void (*out) (uint8_t), uint8_t p
 
 uint8_t State8080_ie(State8080_T state) {
   return state->IE;
+}
+
+void State8080_setIE(State8080_T state, uint8_t val) {
+  state->IE = val;
 }
 
 void State8080_pushInterrupt(State8080_T state, uint8_t int_num) {
@@ -1641,6 +1650,10 @@ int op_clockCycles(State8080_T state) {
     
     // ------------------- ROTATE -----------------------------
   case 0x0F:              // RRC, rotate A right
+    return 4;
+
+    // -------------------- SPECIALS ---------------------------
+  case 0x37:
     return 4;
 
     // ------------------ INPUT/OUTPUT -------------------------
