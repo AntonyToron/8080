@@ -129,7 +129,7 @@ void render() {
   //glVertex3f(0.5, 0.0, 0.0);
   //glVertex3f(0.0, 0.5, 0.0);
   //glEnd();
-  glRasterPos2i(0,0);
+  //glRasterPos2i(0,0);
   
   // 1-bit space invaders video into window
   // ASSUME SPACE INVADERS FOR NOW
@@ -162,8 +162,15 @@ void render() {
       }
     }
   }
+
+  glRasterPos2f(-1, 1);
+  glPixelZoom(1, -1);
   
-  glDrawPixels(W, H, GL_RGB, GL_UNSIGNED_BYTE, windowPixels);
+  glDrawPixels(W, H, GL_RGBA, GL_UNSIGNED_BYTE, windowPixels);
+
+  
+  
+  
   glutSwapBuffers();
 }
 
