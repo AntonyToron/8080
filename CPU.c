@@ -208,6 +208,28 @@ static void ADC_R (State8080_T state) {
   state->registers[7] = sum & 0xff;              // update accumulator
 }
 
+// ADD register r from opcode to accumulator (a)
+static void SUB_R (State8080_T state) {
+  unsigned char *opcode = &state->memory[state->pc];
+  uint8_t reg = (*opcode) & 0x07;
+  uint8_t reg_value = GetRegister(state, reg);
+  uint16_t result = (uint16_t) state->registers[7] - (uint16_t) reg_value;
+  
+  UpdateCCSimple(state, result);
+  state->registers[7] = result & 0xff;              // update accumulator
+}
+
+// SUB register r from accumulator (a) with carry
+static void SBB_R (State8080_T state) {
+  unsigned char *opcode = &state->memory[state->pc];
+  uint8_t reg = (*opcode) & 0x07;
+  uint8_t reg_value = GetRegister(state, reg);
+  uint16_t result = (uint16_t) state->registers[7] - (uint16_t) reg_value - (uint16_t) state->cc->c;
+  
+  UpdateCCSimple(state, result);
+  state->registers[7] = result & 0xff;              // update accumulator
+}
+
 // ANA register r, r & a -> a, set sign, zero, parity. carry = 0
 static void ANA (State8080_T state) {
   uint8_t result;
@@ -248,6 +270,26 @@ static void XRA (State8080_T state) {
   state->cc->c = 0; // set carry to 0 just in case
 }
 
+// OR register r, r | a -> a, same cc as XRA
+static void ORA (State8080_T state) {
+  uint8_t result;
+  unsigned char *opcode = &state->memory[state->pc];
+  uint8_t reg = (*opcode) & 0x07;
+
+  if (reg == 6) {
+    uint16_t offset = (state->registers[4]<<8) | (state->registers[5]);
+    result = state->registers[7] | state->memory[offset];
+    state->registers[7] = result;
+  }
+  else {
+    result = state->registers[7] | state->registers[reg];
+    state->registers[7] = result;
+  }
+
+  UpdateCCSimple(state, result);
+  state->cc->c = 0; // set carry to 0 just in case
+  
+}
 
 // INR register r from opcode
 static void INR_R (State8080_T state) {
@@ -312,6 +354,9 @@ static void RET_conditional (State8080_T state, uint8_t condition) {
     
     state->pc = updatedPC;
     state->sp += 2;
+  }
+  else {
+    state->pc += 1;
   }
 }
 
@@ -525,6 +570,34 @@ void Emulate8080Op(State8080_T state, unsigned char *opcode) {
     state->pc += 1;
     break;
 
+  case 0x22:               // SHLD, store H&L direct
+    {
+      uint16_t addr = (opcode[2]<<8) | (opcode[1] & 0xff); // little endian
+
+      // L stored at (HI, LOW)
+      // H stored at next higher memory address
+      state->memory[addr] = state->registers[5];
+      state->memory[addr + 1] = state->registers[4];
+
+      state->pc += 2; // for data bytes
+    }
+    state->pc += 1;
+    break;
+    
+  case 0x2A:               // LHLD, load H&L direct
+    {
+      uint16_t addr = (opcode[2]<<8) | (opcode[1] & 0xff); // little endian
+
+      // L takes value stored at (HI, LOW)
+      // H takes value stored at next higher memory address
+      state->registers[5] = state->memory[addr];
+      state->registers[4] = state->memory[addr + 1];
+
+      state->pc += 2; // for data bytes
+    }
+    state->pc += 1;
+    break;
+
   case 0xEB:               // XCHG, exchange DE HL
     {
       // H <-> D, L <-> E
@@ -642,6 +715,21 @@ void Emulate8080Op(State8080_T state, unsigned char *opcode) {
     // sp <- sp + 2
     state->sp += 2;
 
+    break;
+
+  case 0xE3:              // XTHL, exchange top of stack, H&L
+    {
+      uint8_t temp = state->memory[state->sp];
+      // L <-> (SP)
+      state->memory[state->sp] = state->registers[5];
+      state->registers[5] = temp;
+
+      // H <-> (SP + 1)
+      temp = state->memory[state->sp + 1];
+      state->memory[state->sp] = state->registers[4];
+      state->registers[4] = temp;     
+    }
+    state->pc += 1;
     break;
 
   case 0xF9:              // SPHL, HL to stack pointer
@@ -1013,6 +1101,52 @@ void Emulate8080Op(State8080_T state, unsigned char *opcode) {
 
     // ------------------- SUBTRACTS --------------------------
 
+  case 0x90:              // SUB B, subtract register with A, goes into A
+  case 0x91:              // SUB C, subtract register with A, goes into A
+  case 0x92:              // SUB D, subtract register with A, goes into A
+  case 0x93:              // SUB E, subtract register with A, goes into A
+  case 0x94:              // SUB H, subtract register with A, goes into A
+  case 0x95:              // SUB L, subtract register with A, goes into A
+  case 0x96:              // SUB M, subtract register with A, goes into A
+  case 0x97:              // SUB A, subtract register with A, goes into A
+    SUB_R (state);
+    state->pc += 1;
+    break;
+
+  case 0x98:              // SBB B, subtract register with A with carry
+  case 0x99:              // SBB C, subtract register with A with carry
+  case 0x9A:              // SBB D, subtract register with A with carry
+  case 0x9B:              // SBB E, subtract register with A with carry
+  case 0x9C:              // SBB H, subtract register with A with carry
+  case 0x9D:              // SBB L, subtract register with A with carry
+  case 0x9E:              // SBB M, subtract register with A with carry
+  case 0x9F:              // SBB A, subtract register with A with carry
+    SBB_R (state);
+    state->pc += 1;
+    break;
+
+  case 0xD6:              // SUI, subtract immediate from A
+    {
+      uint16_t result = (uint16_t) state->registers[7] - (uint16_t) opcode[1];
+      
+      UpdateCCSimple(state, result);
+      state->registers[7] = result & 0xff;
+      state->pc += 1; // for the immediate byte
+    }
+    state->pc += 1;
+    break;
+
+  case 0xDE:              // SBI, subtract immediate from A with carry
+    {
+      uint16_t result = (uint16_t) state->registers[7] - (uint16_t) opcode[1] - (uint16_t) state->cc->c;
+      
+      UpdateCCSimple(state, result);
+      state->registers[7] = result & 0xff;
+      state->pc += 1; // for the immediate byte
+    }
+    state->pc += 1;
+    break;
+
     // ------------------- LOGICAL ----------------------------
 
     // ----------------------- ANA ----------------------------
@@ -1027,7 +1161,7 @@ void Emulate8080Op(State8080_T state, unsigned char *opcode) {
     ANA (state);
     state->pc += 1;
     break;
-
+    
     // ----------------------- XRA ----------------------------
   case 0xA8:              // XRA B, XOR register with A, goes into A
   case 0xA9:              // XRA C, XOR register with A, goes into A
@@ -1038,6 +1172,19 @@ void Emulate8080Op(State8080_T state, unsigned char *opcode) {
   case 0xAE:              // XRA Memory, XOR register with A, goes into A
   case 0xAF:              // XRA A, XOR register with A, goes into A
     XRA (state);
+    state->pc += 1;
+    break;
+
+    // ------------------------ ORA r  -------------------------
+  case 0xB0:              // ORA B, OR register with A, goes into A
+  case 0xB1:              // ORA C, OR register with A, goes into A
+  case 0xB2:              // ORA D, OR register with A, goes into A
+  case 0xB3:              // ORA E, OR register with A, goes into A
+  case 0xB4:              // ORA H, OR register with A, goes into A
+  case 0xB5:              // ORA L, OR register with A, goes into A
+  case 0xB6:              // ORA M, OR register with A, goes into A
+  case 0xB7:              // ORA A, OR register with A, goes into A
+    ORA (state);
     state->pc += 1;
     break;
 
@@ -1056,6 +1203,34 @@ void Emulate8080Op(State8080_T state, unsigned char *opcode) {
     state->pc += 1;
     break;
 
+  case 0xEE:              // XRI, XOR immediate with A
+    {
+      uint8_t result = state->registers[7] ^ opcode[1];
+      
+      state->registers[7] = result;
+      
+      UpdateCCSimple(state, result);
+      state->cc->c = 0; // carry is zeroed
+      
+      state->pc += 1; // data byte
+    }
+    state->pc += 1;
+    break;
+    
+  case 0xF6:              // ORI, OR immediate with A
+    {
+      uint8_t result = state->registers[7] | opcode[1];
+      
+      state->registers[7] = result;
+      
+      UpdateCCSimple(state, result);
+      state->cc->c = 0; // carry is zeroed
+      
+      state->pc += 1; // data byte
+    }
+    state->pc += 1;
+    break;
+
     // ------------------------ CPI ---------------------------
   case 0xFE:              // CPI, compare immediate with A
     // condition bits set by (A) - Data
@@ -1070,6 +1245,23 @@ void Emulate8080Op(State8080_T state, unsigned char *opcode) {
     break;
     
     // ------------------- ROTATE -----------------------------
+  case 0x07:              // RLC, rotate A left
+    {
+      uint8_t a7 = (state->registers[7] & 0x80) >> 7;
+
+      // set carry - a7
+      state->cc->c = a7;
+
+      // rotate A left
+      // rotate
+      state->registers[7] <<= 1;
+
+      // A0 <- A7
+      state->registers[7] &= 0xfe; // clear first bit
+      state->registers[7] |= (a7 & 0xff);
+    }
+    state->pc += 1;
+    break;
   case 0x0F:              // RRC, rotate A right
     {
       uint8_t a0 = state->registers[7] & 0x01;
@@ -1087,11 +1279,85 @@ void Emulate8080Op(State8080_T state, unsigned char *opcode) {
     }
     state->pc += 1;
     break;
+  case 0x17:              // RAL, rotate A left through carry
+    {
+      uint8_t a7 = (state->registers[7] & 0x80) >> 7; // save a7
+
+      // rotate A left
+      // rotate
+      state->registers[7] <<= 1;
+
+      // A0 <- carry
+      state->registers[7] &= 0xfe; // clear first bit
+      state->registers[7] |= (state->cc->c & 0xff);
+
+      // set carry - a7
+      state->cc->c = a7;
+    }
+    state->pc += 1;
+    break;
+  case 0x1F:              // RAR, rotate A right through carry
+    { // 01101010 (1) -> 10110101 (0) , where () is carry
+      uint8_t a0 = state->registers[7] & 0x01; // save a0
+  
+      // rotate A right
+      // rotate
+      state->registers[7] >>= 1;
+      
+      // A7 <- A0
+      state->registers[7] &= 0x7f;         // clear last bit
+      state->registers[7] |= (state->cc->c << 7);    // update last bit
+
+      // set carry = A0
+      state->cc->c = a0;
+    }
+    state->pc += 1;
+    break;
 
     // -------------------- SPECIALS ---------------------------
+  case 0x2F:              // CMA, complement A
+    state->registers[7] ^= 0xff;
+    state->pc += 1;
+    break;
   case 0x37:              // STC, set carry
     state->cc->c = 1;
+    state->pc += 1;
     break;
+  case 0x3F:              // CMC, complement carry
+    state->cc->c ^= 0x01;
+    state->pc += 1;
+    break;   
+  case 0x27:              // DAA, decimal adjust A
+    {
+      uint16_t result = state->registers[7];
+      if (state->cc->ac || ((state->registers[7] & 0x0f) > 9)) {
+        result += 6;
+	uint8_t lsb = (result & 0x0f) + 6;
+	
+	state->registers[7] = (uint8_t) (result & 0xff);
+
+	UpdateCCSimple(state, lsb);
+	if (lsb > 0x0f) // carry out from lsb
+	  state->cc->ac = 1;
+	else
+	  state->cc->ac = 0;
+      }
+      if (state->cc->c || ((state->registers[7] & 0x0f) > 9)) {
+	uint8_t gsb = (result >> 4) + 6;
+	
+	// reset result with new gsb
+	result = (gsb << 4) | (result & 0x0f);
+	state->registers[7] = (uint8_t) (result & 0xff);
+
+	UpdateCCSimple(state, gsb);
+	if (gsb > 0x0f) // carry out from gsb
+	  state->cc->c = 1;	
+      }
+      
+    }
+    state->pc += 1;
+    break;
+    
 
     // ------------------ INPUT/OUTPUT -------------------------
     // TODO: THESE ARE TEMPORARY PLACE HOLDERS FOR THESE FUNCTIONS
@@ -1408,6 +1674,10 @@ int op_clockCycles(State8080_T state) {
   case 0x3A:               // LDA, load A direct
     return 13;
 
+  case 0x22:               // SHLD, store H&L direct 
+  case 0x2A:               // LHLD, load H&L direct
+    return 16;
+
   case 0xEB:               // XCHG, exchange DE HL
     return 4;
 
@@ -1427,6 +1697,8 @@ int op_clockCycles(State8080_T state) {
   case 0xF1:               // POP PSW, pop a and flags off stack
     return 10;
 
+  case 0xE3:              // XTHL, exchange top of stack, H&L
+    return 18;
   case 0xF9:              // SPHL, HL to stack pointer
     return 5;
   case 0x31:              // LXI SP, load immediate stack pointer
@@ -1612,7 +1884,34 @@ int op_clockCycles(State8080_T state) {
     return 10;
 
     // ------------------- SUBTRACTS --------------------------
+  case 0x90:              // SUB B, subtract register with A, goes into A
+  case 0x91:              // SUB C, subtract register with A, goes into A
+  case 0x92:              // SUB D, subtract register with A, goes into A
+  case 0x93:              // SUB E, subtract register with A, goes into A
+  case 0x94:              // SUB H, subtract register with A, goes into A
+  case 0x95:              // SUB L, subtract register with A, goes into A
+    return 4;
+  case 0x96:              // SUB M, subtract register with A, goes into A
+    return 7;
+  case 0x97:              // SUB A, subtract register with A, goes into A
+    return 4;
 
+  case 0x98:              // SBB B, subtract register with A with carry
+  case 0x99:              // SBB C, subtract register with A with carry
+  case 0x9A:              // SBB D, subtract register with A with carry
+  case 0x9B:              // SBB E, subtract register with A with carry
+  case 0x9C:              // SBB H, subtract register with A with carry
+  case 0x9D:              // SBB L, subtract register with A with carry
+    return 4;
+  case 0x9E:              // SBB M, subtract register with A with carry
+    return 7;
+  case 0x9F:              // SBB A, subtract register with A with carry
+    return 4;
+
+  case 0xD6:              // SUI, subtract immediate from A
+  case 0xDE:              // SBI, subtract immediate from A with carry
+    return 7;
+    
     // ------------------- LOGICAL ----------------------------
 
     // ----------------------- ANA ----------------------------
@@ -1641,21 +1940,40 @@ int op_clockCycles(State8080_T state) {
   case 0xAF:              // XRA A, XOR register with A, goes into A
     return 4;
 
+  case 0xB0:              // ORA B, OR register with A, goes into A
+  case 0xB1:              // ORA C, OR register with A, goes into A
+  case 0xB2:              // ORA D, OR register with A, goes into A
+  case 0xB3:              // ORA E, OR register with A, goes into A
+  case 0xB4:              // ORA H, OR register with A, goes into A
+  case 0xB5:              // ORA L, OR register with A, goes into A
+    return 4;
+  case 0xB6:              // ORA M, OR register with A, goes into A
+    return 7;
+  case 0xB7:              // ORA A, OR register with A, goes into A
+    return 4;
+    
     // ----------------------- ANI ----------------------------
   case 0xE6:              // ANI, and immediate with A
+  case 0xEE:              // XRI, XOR immediate with A 
+  case 0xF6:              // ORI, OR immediate with A
 
     // ------------------------ CPI ---------------------------
   case 0xFE:              // CPI, compare immediate with A
     return 7;
     
     // ------------------- ROTATE -----------------------------
+  case 0x07:              // RLC, rotate A left
   case 0x0F:              // RRC, rotate A right
+  case 0x17:              // RAL, rotate A left through carry
+  case 0x1F:              // RAR, rotate A right through carry
     return 4;
-
-    // -------------------- SPECIALS ---------------------------
-  case 0x37:
+    
+    // -------------------- SPECIALS --------------------------- 
+  case 0x2F:              // CMA, complement A
+  case 0x37:              // STC, set carry
+  case 0x3F:              // CMC, complement carry
+  case 0x27:              // DAA, decimal adjust A
     return 4;
-
     // ------------------ INPUT/OUTPUT -------------------------
     // TODO: THESE ARE TEMPORARY PLACE HOLDERS FOR THESE FUNCTIONS
     // SHOULD BE MOVED OUTSIDE

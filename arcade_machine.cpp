@@ -32,6 +32,9 @@ const int RGB_OFF = 0x00000000;
 
 const unsigned int W = 224;
 const unsigned int H = 256;
+unsigned int CURRENT_WIDTH = W * 2;
+unsigned int CURRENT_HEIGHT = H * 2;
+
 double clock_time_miliseconds = 1000.0 / 2000000.0;
 
 State8080_T state = NULL;
@@ -199,7 +202,9 @@ void changeSize(int w, int h) {
   
   //glPixelZoom(x, y);   // MIRROR IMAGE
   //glRasterPos2f(-1, 1); // IMPORTANT FOR STARTING AT 0, 0
-  
+
+  CURRENT_WIDTH = w;
+  CURRENT_HEIGHT = h;
   
   
 }
@@ -282,6 +287,7 @@ void hardwareThread() {
 
         
     usleep(16670);
+    //usleep(16000);
   }
 }
 
