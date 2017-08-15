@@ -38,6 +38,8 @@ State8080_T state = NULL;
 bool CPU_on = false;
 bool hardware_interrupt = false;
 
+uint8_t last_interrupt = 0;
+
 // DISPLAY
 unsigned char windowPixels[W * H * 4];
 
@@ -162,9 +164,9 @@ void render() {
       }
     }
   }
-
-  glRasterPos2f(-1, 1);
-  glPixelZoom(1, -1);
+  
+  glRasterPos2f(-1, 1); // IMPORTANT FOR STARTING AT 0, 0
+  glPixelZoom(1 * 2, -1 * 2);   // MIRROR IMAGE, and ZOOM IN, to window size
   
   glDrawPixels(W, H, GL_RGBA, GL_UNSIGNED_BYTE, windowPixels);
 
@@ -172,6 +174,34 @@ void render() {
   
   
   glutSwapBuffers();
+  
+  /*
+  glGenTextures (1, &texID);
+  glBindTextures (GL_TEXTURE_RECTANGLE_EXT, texID);
+  glTexImage2D (GL_TEXTURE_RECTANGLE_EXT, 0, GL_RGBA, 640, 480, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, windowPixels);
+  glBegin (GL_QUADS);
+  glTexCoord2f (0, 0);
+  glVertex2f (0, 0);
+  glTexCoord2f (W, 0);
+  glVertex2f (W, 0);
+  glTexCoord2f (640, 480);
+  glVertex2f (W, H);
+  glTexCoord2f (0, 480);
+  glVertex2f (0, H);
+  glEnd();
+  */
+}
+
+void changeSize(int w, int h) {
+  double x = w / W;
+  double y = h / H;
+  
+  
+  //glPixelZoom(x, y);   // MIRROR IMAGE
+  //glRasterPos2f(-1, 1); // IMPORTANT FOR STARTING AT 0, 0
+  
+  
+  
 }
 
 void processNormalKeys(unsigned char key, int x, int y) {
@@ -210,7 +240,14 @@ void graphicsInterrupt() {
   // say that it was from hardware
   hardware_interrupt = true;
 
-  State8080_pushInterrupt(state, 2); // graphics interrupt 
+  if (last_interrupt == 1) {
+    State8080_pushInterrupt(state, 2); // graphics interrupt
+    last_interrupt = 2;
+  }
+  else {
+    State8080_pushInterrupt(state, 1);
+    last_interrupt = 1;
+  }
 }
 
 void graphicsThread(int argc, char **argv) {
@@ -218,13 +255,14 @@ void graphicsThread(int argc, char **argv) {
   glutInit(&argc, argv);
 
   glutInitWindowPosition(100, 100);
-  glutInitWindowSize(W, H);
+  glutInitWindowSize(W * 2, H * 2);
   glutInitDisplayMode(GLUT_RGBA | GLUT_SINGLE); // double?
   glutCreateWindow("Arcade Machine 8080");
   
   // register callbacks
   glutDisplayFunc(render);
   glutIdleFunc(render);
+  //glutReshapeFunc(changeSize);
 
   // external entries callbacks
   glutKeyboardFunc (processNormalKeys);
