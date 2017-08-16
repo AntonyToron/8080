@@ -254,12 +254,6 @@ void graphicsInterrupt(int value) {
     State8080_pushInterrupt(state, 1);
     last_interrupt = 1;
   }
-
-  struct sigaction act;
-  act.sa_handler = graphicsInterrupt;
-  sigaction (SIGALRM, & act, 0);
-
-  ualarm(16670, 0); // 16.67 ms
 }
 
 void graphicsThread(int argc, char **argv) {
@@ -291,7 +285,7 @@ void hardwareThread() {
   act.sa_handler = graphicsInterrupt;
   sigaction (SIGALRM, & act, 0);
 
-  ualarm(16670, 0); // 16.67 ms
+  ualarm(16670, 16670); // 16.67 ms
   
   // --------------- arcade specific --------------------- //
   // add timer for 1/60 seconds to process graphics, 16.67 milliseconds
@@ -312,21 +306,13 @@ void processorThread() {
     // check if interrupts enabled, and an interrupt happened
     if (State8080_ie(state) && hardware_interrupt) { 
       hardware_interrupt = false;
-      
-      printf ("Got an interrupt");
-      
+           
       // get interrupt set by hardware  11AAA111
       unsigned char op = (State8080_popInterrupt(state) << 3) | 0xC7;
 
       Emulate8080Op(state, &op);
 
-      //unsigned char DI = 0xF3;
-      
-      // DI
-      //Emulate8080Op(state, &DI);
       State8080_setIE(state, 1);
-
-      fflush(stdout);
     }
     else {
       int cycles = op_clockCycles(state); // how many cycles this should take
@@ -338,22 +324,12 @@ void processorThread() {
       fflush(stdout);
 
       double instructionTime = (std::clock() - start) / (double)(CLOCKS_PER_SEC / 1000);
-      //std::cout << "Time: " << instructionTime << "ms" << std::endl;
-      
-      
+            
       // check if instruction took enough time
       double targetTime = (cycles * 1.0) * clock_time_miliseconds;
       if (instructionTime < targetTime) {
-	double waitTime = targetTime - instructionTime;
-	std::cout << "sleeping for " << waitTime << "ms" << std::endl;
-        
-      }
-
-      //std::cout << "Should have taken " << targetTime << "ms" << std::endl;
-      //std::cout << "Now it took: " << (std::clock() - start) / (double)(CLOCKS_PER_SEC / 1000) << " ms" << std::endl;
-
-      fflush(stdout);
-     
+	double waitTime = targetTime - instructionTime;        
+      }     
     }
   } 
 }

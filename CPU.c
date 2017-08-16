@@ -1378,8 +1378,6 @@ void Emulate8080Op(State8080_T state, unsigned char *opcode) {
     {
       uint8_t port = opcode[1];
 
-      printf ("port : $%02x", port);
-      fflush(stdout);
       void (*p) (uint8_t i) = state->drivers->out[port];
 
       (*p) (state->registers[7]);
