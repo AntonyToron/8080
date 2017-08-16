@@ -1,0 +1,2 @@
+gcc  -c CPU.c
+Makefile:36: recipe for target 'CPU.o' failed
