@@ -1404,7 +1404,8 @@ void Emulate8080Op(State8080_T state, unsigned char *opcode) {
   default:
     UnimplementedInstruction(state);
   }
-  
+
+  #ifdef DEBUG
   //  PRINT CURRENT INSTRUCTION AND STATE
   printf("\t CURRENT INSTRUCTION: $%02x\n", *opcode);
   
@@ -1416,6 +1417,7 @@ void Emulate8080Op(State8080_T state, unsigned char *opcode) {
   printf("\n");
   
   fflush(stdout);
+  #endif
 }
 
 void Emulate8080State(State8080_T state) {
@@ -1424,8 +1426,10 @@ void Emulate8080State(State8080_T state) {
   // get opcode from memory at PC, PC steps away from start of memory
   opcode = &state->memory[state->pc];
 
+  #ifdef DEBUG
   printf("Executing $%02x", *opcode);
   fflush(stdout);
+  #endif
 
   Emulate8080Op(state, opcode);
 }

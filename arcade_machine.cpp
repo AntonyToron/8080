@@ -13,6 +13,7 @@
 #include <unistd.h>
 #include <ctime>
 #include <iostream>
+#include <signal.h>
 extern "C" {
   #include "CPU.h"
 }
@@ -235,7 +236,7 @@ void processSpecialKeys(int key, int x, int y) {
   fflush(stdout);
 }
 
-void graphicsInterrupt() {
+void graphicsInterrupt(int value) {
   // set IE to true
   //unsigned char IE = 0xFB;
   //Emulate8080Op(state, &IE);
@@ -253,6 +254,12 @@ void graphicsInterrupt() {
     State8080_pushInterrupt(state, 1);
     last_interrupt = 1;
   }
+
+  struct sigaction act;
+  act.sa_handler = graphicsInterrupt;
+  sigaction (SIGALRM, & act, 0);
+
+  ualarm(16670, 0); // 16.67 ms
 }
 
 void graphicsThread(int argc, char **argv) {
@@ -279,16 +286,22 @@ void graphicsThread(int argc, char **argv) {
 
 void hardwareThread() {
   printf ("Hello from hardware thread\n");
+
+  struct sigaction act;
+  act.sa_handler = graphicsInterrupt;
+  sigaction (SIGALRM, & act, 0);
+
+  ualarm(16670, 0); // 16.67 ms
   
   // --------------- arcade specific --------------------- //
   // add timer for 1/60 seconds to process graphics, 16.67 milliseconds
-  for (;;) {
+  /*for (;;) {
     graphicsInterrupt();
 
         
     usleep(16670);
     //usleep(16000);
-  }
+    }*/
 }
 
 void processorThread() {
@@ -332,8 +345,8 @@ void processorThread() {
       double targetTime = (cycles * 1.0) * clock_time_miliseconds;
       if (instructionTime < targetTime) {
 	double waitTime = targetTime - instructionTime;
-	//std::cout << "sleeping for " << waitTime << "ms" << std::endl;
-	usleep(waitTime * 1000); // sleep in microseconds
+	std::cout << "sleeping for " << waitTime << "ms" << std::endl;
+        
       }
 
       //std::cout << "Should have taken " << targetTime << "ms" << std::endl;
