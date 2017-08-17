@@ -14,6 +14,9 @@
 #include <ctime>
 #include <iostream>
 #include <signal.h>
+#include <mutex>
+#include <condition_variable>
+
 extern "C" {
   #include "CPU.h"
 }
@@ -36,7 +39,7 @@ const unsigned int H = 256;
 unsigned int CURRENT_WIDTH = W * 2;
 unsigned int CURRENT_HEIGHT = H * 2;
 
-double clock_time_miliseconds = 1000.0 / 2000000.0;
+double clock_time_milliseconds = 1000.0 / 2000000.0;
 
 State8080_T state = NULL;
 bool CPU_on = false;
@@ -47,6 +50,9 @@ uint8_t last_interrupt = 0;
 // DISPLAY
 unsigned char windowPixels[W * H * 4];
 
+
+std::mutex m;
+std::condition_variable cv;
 
 // -------------------------- STATE INITIALIZATION ---------------------
 
@@ -129,13 +135,6 @@ void render() {
   int i, j;
   
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-  //glBegin(GL_TRIANGLES);
-  //glVertex3f(-0.5, -0.5, 0.0);
-  //glVertex3f(0.5, 0.0, 0.0);
-  //glVertex3f(0.0, 0.5, 0.0);
-  //glEnd();
-  //glRasterPos2i(0,0);
   
   // 1-bit space invaders video into window
   // ASSUME SPACE INVADERS FOR NOW
@@ -154,9 +153,6 @@ void render() {
       unsigned int *p1 = (unsigned int *)(&windowPixels[offset]);
       for (p = 0; p < 8; p++) {
 	if (0 != (pix & (1 << p))) { // white pixel
-	  //windowPixels[offset][0] = 255;
-	  //windowPixels[offset][1] = 255;
-	  //windowPixels[offset][2] = 255;
 	  *p1 = RGB_ON;
 	  
 	  fflush(stdout);
@@ -174,26 +170,7 @@ void render() {
   
   glDrawPixels(W, H, GL_RGBA, GL_UNSIGNED_BYTE, windowPixels);
 
-  
-  
-  
   glutSwapBuffers();
-  
-  /*
-  glGenTextures (1, &texID);
-  glBindTextures (GL_TEXTURE_RECTANGLE_EXT, texID);
-  glTexImage2D (GL_TEXTURE_RECTANGLE_EXT, 0, GL_RGBA, 640, 480, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, windowPixels);
-  glBegin (GL_QUADS);
-  glTexCoord2f (0, 0);
-  glVertex2f (0, 0);
-  glTexCoord2f (W, 0);
-  glVertex2f (W, 0);
-  glTexCoord2f (640, 480);
-  glVertex2f (W, H);
-  glTexCoord2f (0, 480);
-  glVertex2f (0, H);
-  glEnd();
-  */
 }
 
 void changeSize(int w, int h) {
@@ -254,6 +231,8 @@ void graphicsInterrupt(int value) {
     State8080_pushInterrupt(state, 1);
     last_interrupt = 1;
   }
+
+  cv.notify_all(); // notify of hardware interrupt
 }
 
 void graphicsThread(int argc, char **argv) {
@@ -285,51 +264,52 @@ void hardwareThread() {
   act.sa_handler = graphicsInterrupt;
   sigaction (SIGALRM, & act, 0);
 
-  ualarm(16670, 16670); // 16.67 ms
-  
   // --------------- arcade specific --------------------- //
   // add timer for 1/60 seconds to process graphics, 16.67 milliseconds
-  /*for (;;) {
-    graphicsInterrupt();
-
-        
-    usleep(16670);
-    //usleep(16000);
-    }*/
+  ualarm(16670, 16670); // 16.67 ms
+  
 }
+
+
 
 void processorThread() {
   printf("hello from processor\n");
   fflush(stdout);
 
+  long int cyclesExecuted = 0;
+
   while (CPU_on) {
+    // lock thread if the amount of time to execute the cycles exceeds 60hz
+    // this will essentially perform a batch delay, instead of delaying on
+    // each instruction. This synchronizes the instructions with the 60hz
+    // timer, in batches. This means that approximately the same amount of
+    // instructions that would be executed during the 60hz window on the 8080
+    // are emulated similarly here.
+    if ((cyclesExecuted * clock_time_milliseconds) > 16) {
+      #ifdef DEBUG
+      printf ("Locking execution %ld %f\n", cyclesExecuted, cyclesExecuted * clock_time_milliseconds);
+      #endif
+      
+      std::unique_lock<std::mutex> lk(m);
+      cv.wait_for(lk, std::chrono::microseconds(16670), []{return hardware_interrupt;});
+    }
+    // this will cascade into interrupt code
+    
     // check if interrupts enabled, and an interrupt happened
     if (State8080_ie(state) && hardware_interrupt) { 
       hardware_interrupt = false;
+      cyclesExecuted = 0; // reset cycles
            
       // get interrupt set by hardware  11AAA111
       unsigned char op = (State8080_popInterrupt(state) << 3) | 0xC7;
-
       Emulate8080Op(state, &op);
-
       State8080_setIE(state, 1);
     }
     else {
       int cycles = op_clockCycles(state); // how many cycles this should take
-      // start timer
-      std::clock_t start;
-      start = std::clock();
+      cyclesExecuted += cycles;
       
-      Emulate8080State(state);
-      fflush(stdout);
-
-      double instructionTime = (std::clock() - start) / (double)(CLOCKS_PER_SEC / 1000);
-            
-      // check if instruction took enough time
-      double targetTime = (cycles * 1.0) * clock_time_miliseconds;
-      if (instructionTime < targetTime) {
-	double waitTime = targetTime - instructionTime;        
-      }     
+      Emulate8080State(state);     
     }
   } 
 }
