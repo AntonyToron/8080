@@ -161,7 +161,14 @@ void populateWindowFromMemory() {
   }
 }
 
-void render() {  
+void render() {
+  // ADDS A LOCK ON RENDERING (THIS IS THE IDLE FUNC, SO IT LOCKS UP AND ONLY
+  // RENDERS WHEN THE 60Hz WINDOW IS UP)
+  std::unique_lock<std::mutex> lk(m);
+  cv.wait_for(lk, std::chrono::microseconds(16670), []{return hardware_interrupt;});
+
+  // RENDER SCREEN
+  
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   
   glRasterPos2f(-1, 1); // IMPORTANT FOR STARTING AT 0, 0
@@ -171,6 +178,7 @@ void render() {
 
   glutSwapBuffers();
 }
+
 
 void changeSize(int w, int h) {
   double x = w / W;
@@ -240,18 +248,13 @@ void graphicsInterrupt(int value) {
 }
 
 void graphicsThread(int argc, char **argv) {
-  // init GLUT and create window
-  glutInit(&argc, argv);
-
-  glutInitWindowPosition(100, 100);
-  glutInitWindowSize(W * 2, H * 2);
-  glutInitDisplayMode(GLUT_RGBA | GLUT_SINGLE); // double?
-  glutCreateWindow("Arcade Machine 8080");
+  
   
   // register callbacks
   glutDisplayFunc(render);
   glutIdleFunc(render);
   //glutReshapeFunc(changeSize);
+  //glutTimerFunc(16, renderCallback, 0);
 
   // external entries callbacks
   glutKeyboardFunc (processNormalKeys);
@@ -318,9 +321,19 @@ void processorThread() {
   } 
 }
 
+void INITIALIZE_GRAPHICS(int argc, char **argv) {
+  // init GLUT and create window
+  glutInit(&argc, argv);
+
+  glutInitWindowPosition(100, 100);
+  glutInitWindowSize(W * 2, H * 2);
+  glutInitDisplayMode(GLUT_RGBA | GLUT_SINGLE); // double?
+  glutCreateWindow("Arcade Machine 8080");
+}
 
 int main (int argc, char **argv) {
   INITIALIZE_PROCESSOR(state, argv);
+  INITIALIZE_GRAPHICS(argc, argv);
 
   CPU_on = true;
   
