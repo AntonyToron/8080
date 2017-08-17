@@ -6,11 +6,11 @@
 # Macros
 CC = gcc
 CPP = g++
-CFLAGS =
+CFLAGS = 
 # CFLAGS = -g
 # CFLAGS = -D NDEBUG
 # CFLAGS = -D NDEBUG -O
-CPPFLAGS = -std=c++11 -g
+CPPFLAGS = -std=c++11 
 
 LIBS = -lGL -lGLEW -lglfw -lglut -lGLU -lpthread
 
