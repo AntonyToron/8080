@@ -126,21 +126,16 @@ void INITIALIZE_PROCESSOR(State8080_T state, char **argv) {
 }
 
 
-
-
-
 // ----------------------- MACHINE INFORMATION --------------------
 
-void render() {
+void populateWindowFromMemory() {
   int i, j;
-  
-  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   
   // 1-bit space invaders video into window
   // ASSUME SPACE INVADERS FOR NOW
   uint16_t startVideoMemory = 0x2400;
   uint8_t *videoMemory = pointerToMemoryAt(state, startVideoMemory);
-
+  
   // copy into window
   for (i = 0; i < 224; i++) {
     for (j = 0; j < 256; j+=8) {
@@ -164,6 +159,10 @@ void render() {
       }
     }
   }
+}
+
+void render() {  
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   
   glRasterPos2f(-1, 1); // IMPORTANT FOR STARTING AT 0, 0
   glPixelZoom(1 * 2, -1 * 2);   // MIRROR IMAGE, and ZOOM IN, to window size
@@ -218,6 +217,8 @@ void graphicsInterrupt(int value) {
   //unsigned char IE = 0xFB;
   //Emulate8080Op(state, &IE);
 
+  // PERFORM THE GRAPHICS INTERRUPT
+  
   State8080_setIE(state, 1);
 
   // say that it was from hardware
@@ -233,6 +234,9 @@ void graphicsInterrupt(int value) {
   }
 
   cv.notify_all(); // notify of hardware interrupt
+
+  // POPULATE WINDOW WITH IN-MEMORY VIDEO RAM, (effective 60hz draw)
+  populateWindowFromMemory();
 }
 
 void graphicsThread(int argc, char **argv) {
