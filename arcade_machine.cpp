@@ -16,6 +16,7 @@
 #include <signal.h>
 #include <mutex>
 #include <condition_variable>
+#include <pthread.h>
 
 extern "C" {
   #include "CPU.h"
@@ -52,6 +53,7 @@ unsigned char windowPixels[W * H * 4];
 
 
 std::mutex m;
+std::mutex m2;
 std::condition_variable cv;
 
 // -------------------------- STATE INITIALIZATION ---------------------
@@ -83,6 +85,10 @@ uint8_t ArcadeRead0 () {
   return Arcade8080_read0(am_ports);
 }
 
+uint8_t ArcadeRead1 () {
+  return Arcade8080_read1(am_ports);
+}
+
 Drivers_T ArcadeDrivers() {
   Drivers_T drivers = Drivers_init();
   am_ports = am_ports_init();
@@ -92,6 +98,7 @@ Drivers_T ArcadeDrivers() {
   config_drivers_out_port(drivers, &ArcadeOut2, 2);
   config_drivers_in_port(drivers, &ArcadeRead3, 3);
   config_drivers_in_port(drivers, &ArcadeRead0, 0);
+  config_drivers_in_port(drivers, &ArcadeRead1, 1);
   
   return drivers;
 }
@@ -169,8 +176,10 @@ void populateWindowFromMemory() {
 void render() {
   // ADDS A LOCK ON RENDERING (THIS IS THE IDLE FUNC, SO IT LOCKS UP AND ONLY
   // RENDERS WHEN THE 60Hz WINDOW IS UP)
-  std::unique_lock<std::mutex> lk(m);
+  std::unique_lock<std::mutex> lk(m2);
   cv.wait_for(lk, std::chrono::microseconds(16670), []{return hardware_interrupt;});
+  //usleep(16670);
+
   // RENDER SCREEN
   
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -264,7 +273,7 @@ void graphicsInterruptCallback(int x) {
   glutPostRedisplay();
 }
 
-void graphicsThread(int argc, char **argv) {
+void * graphicsThread(void *x) {
   printf ("Hello from graphics thread\n");
   
   // register callbacks
@@ -280,7 +289,7 @@ void graphicsThread(int argc, char **argv) {
   
 }
 
-void hardwareThread() {
+void * hardwareThread(void *x) {
   printf ("Hello from hardware thread\n");
 
   struct sigaction act;
@@ -294,7 +303,7 @@ void hardwareThread() {
 
 
 
-void processorThread() {
+void * processorThread(void *x) {
   printf("hello from processor\n");
   fflush(stdout);
 
@@ -351,7 +360,7 @@ int main (int argc, char **argv) {
   INITIALIZE_GRAPHICS(argc, argv);
 
   CPU_on = true;
-  
+  /*
   std::thread graphics (graphicsThread, argc, argv); // graphics thread
   std::thread cpu (processorThread); // processor thread
   std::thread hardware (hardwareThread); // hardware thread
@@ -360,6 +369,36 @@ int main (int argc, char **argv) {
   cpu.join();
   graphics.join();  
   hardware.join();
+  */
+
+  pthread_t cpu, graphics, hardware;
+  int x = 0, y = 0, z = 0;
+
+  pthread_create(&cpu, NULL, processorThread, &x);
+  pthread_create(&graphics, NULL, graphicsThread, &y);
+  pthread_create(&hardware, NULL, hardwareThread, &z);
+
+  /*
+  pthread_attr_t thAttr;
+  int policy = 0;
+  int min_prio_for_policy = 0;
+
+  pthread_attr_init(&thAttr);
+  pthread_attr_getschedpolicy(&thAttr, &policy);
+  min_prio_for_policy = sched_get_priority_min(policy);
+
+  pthread_setschedprio(graphics, min_prio_for_policy);
+  pthread_attr_destroy(&thAttr);
+  */
+  /*
+  struct sched_param p;
+  p.sched_priority = 0;
+  sched_setscheduler(graphics, SCHED_IDLE, &p);
+  */
+
+  pthread_join(cpu, NULL);
+  pthread_join(graphics, NULL);
+  pthread_join(hardware, NULL);
   
   return 0;
 }

@@ -137,7 +137,7 @@ static uint8_t GetRegister(State8080_T state, uint8_t reg) {
   switch (reg) {
   case 0x06: ;
     // H = high order bits, L = lower order bits, so shift H 8 bits up
-    uint16_t offset = (state->registers[4]<<8) | (state->registers[5]);
+    uint16_t offset = (state->registers[4]<<8) | (state->registers[5] & 0xff);
     return state->memory[offset]; break;
   case 0x07:
     return state->registers[7]; break;
@@ -223,7 +223,7 @@ static void ADC_R (State8080_T state) {
   uint8_t lsb = (state->registers[7] & 0x0f) + (reg_value & 0x0f) + state->cc->c;
   
   UpdateCCAll(state, sum, lsb);
-   state->registers[7] = sum & 0xff;              // update accumulator
+  state->registers[7] = sum & 0xff;              // update accumulator
 }
 
 // ADD register r from opcode to accumulator (a)
@@ -347,7 +347,7 @@ static void DCR_R (State8080_T state) {
   case 0x06:
     {
       // H = high order bits, L = lower order bits, so shift H 8 bits up
-      uint16_t offset = (state->registers[4]<<8) | (state->registers[5]);
+      uint16_t offset = (state->registers[4]<<8) | (state->registers[5] & 0xff);
       state->memory[offset]--;
       UpdateCCZeroSignParity(state, state->memory[offset]);
       break;
@@ -542,9 +542,24 @@ void Emulate8080Op(State8080_T state, unsigned char *opcode) {
     break;
     // --------------------- STAX -----------------------------
   case 0x02:               // STAX B, store A indirect
+    {
+      uint16_t BC = (state->registers[0]<<8) | (state->registers[1] & 0xff);
+
+      state->memory[BC] = state->registers[7];
+    }
+    
     state->pc += 1;
     break;
-  
+  case 0x12:               // STAX D, store A indirect
+    {
+      uint16_t DE = (state->registers[2]<<8) | (state->registers[3] & 0xff);
+
+      state->memory[DE] = state->registers[7];
+    }
+    
+    state->pc += 1;
+    break;
+ 
     // --------------------- LDAX -----------------------------
 
   case 0x0A:               // LDAX B, load A indirect
@@ -632,7 +647,7 @@ void Emulate8080Op(State8080_T state, unsigned char *opcode) {
       state->registers[4] = state->registers[2];
       state->registers[2] = temp;
       
-      temp = state->registers[5]; // D
+      temp = state->registers[5]; // L
       state->registers[5] = state->registers[3];
       state->registers[3] = temp;
     }
@@ -1712,6 +1727,7 @@ int op_clockCycles(State8080_T state) {
     return 10;
     // --------------------- STAX -----------------------------
   case 0x02:               // STAX B, store A indirect
+  case 0x12:               // STAX D, store A indirect
     return 7;
   
     // --------------------- LDAX -----------------------------

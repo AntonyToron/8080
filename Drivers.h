@@ -19,3 +19,5 @@ void Arcade8080_write2 (uint8_t ac, ArcadeMachinePorts_T am_ports);
 uint8_t Arcade8080_read3 (ArcadeMachinePorts_T am_ports);
 
 uint8_t Arcade8080_read0 (ArcadeMachinePorts_T am_ports);
+
+uint8_t Arcade8080_read1 (ArcadeMachinePorts_T am_ports);

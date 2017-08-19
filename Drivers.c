@@ -46,7 +46,7 @@ void Arcade8080_write4 (uint8_t ac, ArcadeMachinePorts_T am_ports) {
 // xxxxxxxx:yyyyyyyy -> offset 2: 8 bit result = xxxxxxyy
 // offset 7 : 8 bit result = xyyyyyyy
 void Arcade8080_write2 (uint8_t ac, ArcadeMachinePorts_T am_ports) {
-  am_ports->offset = 0;
+  am_ports->offset = ac;
 }
 
 // 8080 Arcade port 3: (Read) // reads data based on shift
@@ -59,8 +59,13 @@ uint8_t Arcade8080_read3 (ArcadeMachinePorts_T am_ports) {
   return result;
 }
 
-
 uint8_t Arcade8080_read0 (ArcadeMachinePorts_T am_ports) {
 
   return 0x0E;
 }
+
+uint8_t Arcade8080_read1 (ArcadeMachinePorts_T am_ports) {
+
+  return 0x08;
+}
+
