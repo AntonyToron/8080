@@ -17,8 +17,8 @@ struct ConditionCodes { // specifying bit count (1 bit flags/flip flops)
   uint8_t s : 1;   // sign flag (0 = POSITIVE, 1 = NEGATIVE)
   uint8_t p : 1;   // parity flag (0 = ODD, 1 = EVEN)
   uint8_t c : 1;   // carry flag (0 = no carry, 1 = carry)
-  uint8_t ac : 1;  // auxiliary carry (carry out of 3 bit accumulator - DAA) 
-  uint8_t pad : 3; // ??
+  uint8_t ac : 1;  // auxiliary carry (carry out of 4 bit accumulator - DAA) 
+  uint8_t pad : 3; // padding (8 bits)
   // IE: flip flop for interrupt enabled
 };
 
@@ -111,6 +111,22 @@ static void UpdateCCSimple(State8080_T state, uint16_t result) {
   state->cc->p = Parity(result & 0xff);  // check parity
 }
 
+static void UpdateCCAll(State8080_T state, uint16_t result, uint8_t lsb) {
+  state->cc->z = ((result & 0xff) == 0); // check if 0, AND with all 1s
+  state->cc->s = ((result & 0x80) != 0); // check if bit 7 is set
+  state->cc->c = (result > 0xff);        // check if sum > 256
+  state->cc->p = Parity(result & 0xff);  // check parity
+  state->cc->ac = (lsb > 9);             // set ac if 4 bit carry
+}
+
+static void UpdateCCSub(State8080_T state, uint16_t result, uint8_t lsb) {
+  state->cc->z = ((result & 0xff) == 0); // check if 0, AND with all 1s
+  state->cc->s = ((result & 0x80) != 0); // check if bit 7 is set
+  state->cc->c = (result < 0xff);        // check if sum > 256
+  state->cc->p = Parity(result & 0xff);  // check parity
+  state->cc->ac = (lsb > 9);             // set ac if 4 bit carry
+}
+
 static void UpdateCCZeroSignParity(State8080_T state, uint16_t result) {
   state->cc->z = ((result & 0xff) == 0);
   state->cc->s = ((result & 0x80) != 0);
@@ -192,8 +208,9 @@ static void ADD_R (State8080_T state) {
   uint8_t reg = (*opcode) & 0x07;
   uint8_t reg_value = GetRegister(state, reg);
   uint16_t sum = (uint16_t) state->registers[7] + (uint16_t) reg_value;
+  uint8_t lsb = (state->registers[7] & 0x0f) + (reg_value & 0x0f);
   
-  UpdateCCSimple(state, sum);
+  UpdateCCAll(state, sum, lsb);
   state->registers[7] = sum & 0xff;              // update accumulator
 }
 
@@ -203,9 +220,10 @@ static void ADC_R (State8080_T state) {
   uint8_t reg = (*opcode) & 0x07;
   uint8_t reg_value = GetRegister(state, reg);
   uint16_t sum = (uint16_t) state->registers[7] + (uint16_t) reg_value + (uint16_t) state->cc->c;
+  uint8_t lsb = (state->registers[7] & 0x0f) + (reg_value & 0x0f) + state->cc->c;
   
-  UpdateCCSimple(state, sum);
-  state->registers[7] = sum & 0xff;              // update accumulator
+  UpdateCCAll(state, sum, lsb);
+   state->registers[7] = sum & 0xff;              // update accumulator
 }
 
 // ADD register r from opcode to accumulator (a)
@@ -213,9 +231,10 @@ static void SUB_R (State8080_T state) {
   unsigned char *opcode = &state->memory[state->pc];
   uint8_t reg = (*opcode) & 0x07;
   uint8_t reg_value = GetRegister(state, reg);
-  uint16_t result = (uint16_t) state->registers[7] - (uint16_t) reg_value;
+  uint16_t result = (uint16_t) state->registers[7] + (uint16_t) (reg_value ^ 0xff) + 1;
+  uint8_t lsb = (state->registers[7] & 0x0f) + ((reg_value & 0x0f) ^ 0x0f) + 1;
   
-  UpdateCCSimple(state, result);
+  UpdateCCSub(state, result, lsb);
   state->registers[7] = result & 0xff;              // update accumulator
 }
 
@@ -224,9 +243,10 @@ static void SBB_R (State8080_T state) {
   unsigned char *opcode = &state->memory[state->pc];
   uint8_t reg = (*opcode) & 0x07;
   uint8_t reg_value = GetRegister(state, reg);
-  uint16_t result = (uint16_t) state->registers[7] - (uint16_t) reg_value - (uint16_t) state->cc->c;
+  uint16_t result = (uint16_t) state->registers[7] + (uint16_t) (((reg_value + state->cc->c) ^ 0xff) + 1);
+  uint8_t lsb = (state->registers[7] & 0x0f) + (((reg_value + state->cc->c) ^ 0x0f) + 1);
   
-  UpdateCCSimple(state, result);
+  UpdateCCSub(state, result, lsb); 
   state->registers[7] = result & 0xff;              // update accumulator
 }
 
@@ -237,7 +257,7 @@ static void ANA (State8080_T state) {
   uint8_t reg = (*opcode) & 0x07;
 
   if (reg == 6) {
-    uint16_t offset = (state->registers[4]<<8) | (state->registers[5]);
+    uint16_t offset = (state->registers[4]<<8) | (state->registers[5] & 0xff);
     result = state->registers[7] & state->memory[offset];
     state->registers[7] = result;
   }
@@ -257,7 +277,7 @@ static void XRA (State8080_T state) {
   uint8_t reg = (*opcode) & 0x07;
 
   if (reg == 6) {
-    uint16_t offset = (state->registers[4]<<8) | (state->registers[5]);
+    uint16_t offset = (state->registers[4]<<8) | (state->registers[5] & 0xff);
     result = state->registers[7] ^ state->memory[offset];
     state->registers[7] = result;
   }
@@ -277,7 +297,7 @@ static void ORA (State8080_T state) {
   uint8_t reg = (*opcode) & 0x07;
 
   if (reg == 6) {
-    uint16_t offset = (state->registers[4]<<8) | (state->registers[5]);
+    uint16_t offset = (state->registers[4]<<8) | (state->registers[5] & 0xff);
     result = state->registers[7] | state->memory[offset];
     state->registers[7] = result;
   }
@@ -299,13 +319,17 @@ static void INR_R (State8080_T state) {
   // source for CC info: http://altairclone.com/downloads/manuals/8080%20Programmers%20Manual.pdf vii
 
   switch (reg) {
-  case 0x06: ;
-    // H = high order bits, L = lower order bits, so shift H 8 bits up
-    uint16_t offset = (state->registers[4]<<8) | (state->registers[5]);
-    state->memory[offset]++; UpdateCCZeroSignParity(state, state->memory[offset]); break;
+  case 0x06:
+    {
+      // H = high order bits, L = lower order bits, so shift H 8 bits up
+      uint16_t offset = (state->registers[4]<<8) | (state->registers[5] & 0xff);
+      state->memory[offset]++;
+      UpdateCCZeroSignParity(state, state->memory[offset]);
+      break;
+    }
   default:
     if (reg > 7) {
-      fprintf(stderr, "Could not find this register in increg");
+      fprintf(stderr, "Could not find this register in INC_R\n");
       exit(1);
     }
     state->registers[reg]++;
@@ -320,14 +344,17 @@ static void DCR_R (State8080_T state) {
   uint8_t reg = ((*opcode) & 0x38)>>3;
 
   switch (reg) {
-  case 0x06: ;
-    // H = high order bits, L = lower order bits, so shift H 8 bits up
-    uint16_t offset = (state->registers[4]<<8) | (state->registers[5]);
-    state->memory[offset]--; UpdateCCZeroSignParity(state, state->memory[offset]);
-    break;
+  case 0x06:
+    {
+      // H = high order bits, L = lower order bits, so shift H 8 bits up
+      uint16_t offset = (state->registers[4]<<8) | (state->registers[5]);
+      state->memory[offset]--;
+      UpdateCCZeroSignParity(state, state->memory[offset]);
+      break;
+    }
   default:
     if (reg > 7) {
-      fprintf(stderr, "Could not find this register in addtoreg");
+      fprintf(stderr, "Could not find this register in DCR_R\n");
       exit(1);
     }
     state->registers[reg]--;
@@ -1018,8 +1045,9 @@ void Emulate8080Op(State8080_T state, unsigned char *opcode) {
   case 0xC6:               // ADI byte, add immediate
     {
       uint16_t sum = (uint16_t) state->registers[7] + (uint16_t) opcode[1]; // next byte
+      uint8_t lsb = (state->registers[7] & 0x0f) + (opcode[1] & 0x0f);
       
-      UpdateCCSimple(state, sum);
+      UpdateCCAll(state, sum, lsb);
       state->registers[7] = sum & 0xff;
       state->pc += 1; // for the immediate byte
     }
@@ -1029,8 +1057,9 @@ void Emulate8080Op(State8080_T state, unsigned char *opcode) {
   case 0xCE:               // ACI, add immediate to A with carry
     {
       uint16_t sum = (uint16_t) state->registers[7] + (uint16_t) opcode[1] + (uint16_t) state->cc->c;
+      uint8_t lsb = (state->registers[7] & 0x0f) + ((opcode[1] + state->cc->c) & 0x0f);
       
-      UpdateCCSimple(state, sum);
+      UpdateCCAll(state, sum, lsb);
       state->registers[7] = sum & 0xff;
       state->pc += 1;
     }
@@ -1127,9 +1156,10 @@ void Emulate8080Op(State8080_T state, unsigned char *opcode) {
 
   case 0xD6:              // SUI, subtract immediate from A
     {
-      uint16_t result = (uint16_t) state->registers[7] - (uint16_t) opcode[1];
+      uint16_t result = (uint16_t) state->registers[7] + (uint16_t) ((opcode[1] ^ 0xff) + 1);
+      uint8_t lsb = (state->registers[7] & 0x0f) + ((opcode[1] & 0x0f) ^ 0x0f);
       
-      UpdateCCSimple(state, result);
+      UpdateCCSub(state, result, lsb);
       state->registers[7] = result & 0xff;
       state->pc += 1; // for the immediate byte
     }
@@ -1138,9 +1168,11 @@ void Emulate8080Op(State8080_T state, unsigned char *opcode) {
 
   case 0xDE:              // SBI, subtract immediate from A with carry
     {
-      uint16_t result = (uint16_t) state->registers[7] - (uint16_t) opcode[1] - (uint16_t) state->cc->c;
+      uint16_t result = (uint16_t) state->registers[7] + (uint16_t) (((opcode[1] + state->cc->c) ^ 0xff) + 1);
+      uint8_t lsb = (state->registers[7] & 0x0f) + ((((opcode[1] & 0x0f) + state->cc->c) ^ 0x0f) + 1);
       
-      UpdateCCSimple(state, result);
+      
+      UpdateCCSub(state, result, lsb);
       state->registers[7] = result & 0xff;
       state->pc += 1; // for the immediate byte
     }
@@ -1236,9 +1268,14 @@ void Emulate8080Op(State8080_T state, unsigned char *opcode) {
     // condition bits set by (A) - Data
     {
       uint16_t result = (state->registers[7] - opcode[1]) & 0xffff;
+      uint8_t lsb = (state->registers[7] & 0x0f) - (opcode[1] & 0x0f);
       
-      UpdateCCSimple(state, result);
-      
+      UpdateCCAll(state, result, lsb);
+      if (state->registers[7] >= opcode[1])
+	state->cc->c = 0;
+      else if (state->registers[7] < opcode[1])
+	state->cc->c = 1;
+	  
       state->pc += 1;
     }
     state->pc += 1;
@@ -1336,13 +1373,12 @@ void Emulate8080Op(State8080_T state, unsigned char *opcode) {
 	
 	state->registers[7] = (uint8_t) (result & 0xff);
 
-	UpdateCCSimple(state, lsb);
 	if (lsb > 0x0f) // carry out from lsb
 	  state->cc->ac = 1;
 	else
 	  state->cc->ac = 0;
       }
-      if (state->cc->c || ((state->registers[7] & 0x0f) > 9)) {
+      if (state->cc->c || (((state->registers[7] >> 4) & 0x0f) > 9)) {
 	uint8_t gsb = (result >> 4) + 6;
 	
 	// reset result with new gsb
@@ -1445,28 +1481,8 @@ ConditionCodes_T ConditionCodes_init () {
   return cc;
 }
 
-State8080_T State8080_init () {
-  State8080_T state = (struct State8080 *) malloc (sizeof (struct State8080));
-
-  state->registers[0] = 0;
-  state->registers[1] = 0;
-  state->registers[2] = 0;
-  state->registers[3] = 0;
-  state->registers[4] = 0;
-  state->registers[5] = 0;
-  state->registers[6] = 0;
-  state->registers[6] = 0;
-
-  state->sp = 0;
-  state->pc = 0;
-  state->memory = (uint8_t *) malloc (65535 * sizeof (uint8_t));
-  state->interrupts = (uint8_t *) malloc (sizeof(uint8_t));
-
-  state->cc = ConditionCodes_init();
-
-  state->IE = 0;
-
-  return state;
+void ConditionCodes_free (ConditionCodes_T cc) {
+  free(cc);
 }
 
 uint8_t empty_IN () {
@@ -1499,6 +1515,44 @@ Drivers_T Drivers_init () {
   drivers->out[7] = &empty_OUT;
 
   return drivers;
+}
+
+void Drivers_free (Drivers_T drivers) {
+  free(drivers);
+}
+
+State8080_T State8080_init () {
+  State8080_T state = (struct State8080 *) malloc (sizeof (struct State8080));
+
+  state->registers[0] = 0;
+  state->registers[1] = 0;
+  state->registers[2] = 0;
+  state->registers[3] = 0;
+  state->registers[4] = 0;
+  state->registers[5] = 0;
+  state->registers[6] = 0;
+  state->registers[6] = 0;
+
+  state->sp = 0;
+  state->pc = 0;
+  state->memory = (uint8_t *) malloc (65535 * sizeof (uint8_t));
+  state->interrupts = (uint8_t *) malloc (sizeof(uint8_t));
+
+  state->cc = ConditionCodes_init();
+  state->drivers = Drivers_init();
+
+  state->IE = 0;
+
+  return state;
+}
+
+void State8080_free (State8080_T state) {
+  free(state->memory);
+  free(state->interrupts);
+  ConditionCodes_free(state->cc);
+  Drivers_free(state->drivers);
+  
+  free(state);
 }
 
 void State8080_load_mem(State8080_T state, int start, unsigned char *buffer) {

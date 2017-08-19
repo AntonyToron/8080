@@ -166,7 +166,6 @@ void render() {
   // RENDERS WHEN THE 60Hz WINDOW IS UP)
   std::unique_lock<std::mutex> lk(m);
   cv.wait_for(lk, std::chrono::microseconds(16670), []{return hardware_interrupt;});
-
   // RENDER SCREEN
   
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -177,6 +176,10 @@ void render() {
   glDrawPixels(W, H, GL_RGBA, GL_UNSIGNED_BYTE, windowPixels);
 
   glutSwapBuffers();
+}
+
+void renderCallback(int x) {
+  render();
 }
 
 
@@ -195,9 +198,11 @@ void changeSize(int w, int h) {
 }
 
 void processNormalKeys(unsigned char key, int x, int y) {
-  if (key == 27) // escape
+  if (key == 27) {// escape
     CPU_on = false; // turn off CPU
+    State8080_free(state);
     exit(0);
+  }
   // can config a, w, s, d too
 }
 
@@ -242,19 +247,22 @@ void graphicsInterrupt(int value) {
   }
 
   cv.notify_all(); // notify of hardware interrupt
-
+  
   // POPULATE WINDOW WITH IN-MEMORY VIDEO RAM, (effective 60hz draw)
   populateWindowFromMemory();
 }
 
+void graphicsInterruptCallback(int x) {
+  graphicsInterrupt(0);
+  render();
+}
+
 void graphicsThread(int argc, char **argv) {
-  
+  printf ("Hello from graphics thread\n");
   
   // register callbacks
   glutDisplayFunc(render);
   glutIdleFunc(render);
-  //glutReshapeFunc(changeSize);
-  //glutTimerFunc(16, renderCallback, 0);
 
   // external entries callbacks
   glutKeyboardFunc (processNormalKeys);

@@ -17,6 +17,8 @@ void Emulate8080State(State8080_T state);
 
 State8080_T State8080_init();
 
+void State8080_free (State8080_T state);
+
 ConditionCodes_T ConditionCodes_init();
 
 Drivers_T Drivers_init();
