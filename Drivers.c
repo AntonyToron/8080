@@ -16,7 +16,8 @@
 struct ArcadeMachinePorts {
   uint8_t shift_registers[2];
   uint8_t offset;
-  
+  uint8_t port0;
+  uint8_t port1;
   // fill in other necessary memory
 };
 
@@ -36,7 +37,7 @@ ArcadeMachinePorts_T am_ports_init () {
 // [8 bits a][8 bits b], shifts a into b, and the new value written to b
 void Arcade8080_write4 (uint8_t ac, ArcadeMachinePorts_T am_ports) {
   am_ports->shift_registers[1] = am_ports->shift_registers[0];
-  am_ports->shift_registers[1] = ac;
+  am_ports->shift_registers[0] = ac;
 }
 
 // 8080 Arcade port 2: (Write), sets the shift amount, DOESNT RETURN IT
@@ -53,8 +54,13 @@ void Arcade8080_write2 (uint8_t ac, ArcadeMachinePorts_T am_ports) {
 uint8_t Arcade8080_read3 (ArcadeMachinePorts_T am_ports) {
   uint8_t result = 0;
 
-  
+  result = ((am_ports->shift_registers[0] << am_ports->offset) & 0xff) | ((am_ports->shift_registers[1] >> am_ports->offset) & 0xff);
 
   return result;
 }
 
+
+uint8_t Arcade8080_read0 (ArcadeMachinePorts_T am_ports) {
+
+  return 0x0E;
+}

@@ -79,6 +79,10 @@ uint8_t ArcadeRead3 () {
   return Arcade8080_read3(am_ports);
 }
 
+uint8_t ArcadeRead0 () {
+  return Arcade8080_read0(am_ports);
+}
+
 Drivers_T ArcadeDrivers() {
   Drivers_T drivers = Drivers_init();
   am_ports = am_ports_init();
@@ -87,6 +91,7 @@ Drivers_T ArcadeDrivers() {
   config_drivers_out_port(drivers, &ArcadeOut4, 4);
   config_drivers_out_port(drivers, &ArcadeOut2, 2);
   config_drivers_in_port(drivers, &ArcadeRead3, 3);
+  config_drivers_in_port(drivers, &ArcadeRead0, 0);
   
   return drivers;
 }
@@ -174,8 +179,9 @@ void render() {
   glPixelZoom(1 * 2, -1 * 2);   // MIRROR IMAGE, and ZOOM IN, to window size
   
   glDrawPixels(W, H, GL_RGBA, GL_UNSIGNED_BYTE, windowPixels);
-
+  
   glutSwapBuffers();
+  
 }
 
 void renderCallback(int x) {
@@ -254,7 +260,8 @@ void graphicsInterrupt(int value) {
 
 void graphicsInterruptCallback(int x) {
   graphicsInterrupt(0);
-  render();
+  
+  glutPostRedisplay();
 }
 
 void graphicsThread(int argc, char **argv) {
@@ -270,6 +277,7 @@ void graphicsThread(int argc, char **argv) {
 
   // enter GLUT event processing cycle
   glutMainLoop();
+  
 }
 
 void hardwareThread() {
@@ -282,7 +290,6 @@ void hardwareThread() {
   // --------------- arcade specific --------------------- //
   // add timer for 1/60 seconds to process graphics, 16.67 milliseconds
   ualarm(16670, 16670); // 16.67 ms
-  
 }
 
 
@@ -350,8 +357,8 @@ int main (int argc, char **argv) {
   std::thread hardware (hardwareThread); // hardware thread
 
   // synchronize threads
-  graphics.join();
   cpu.join();
+  graphics.join();  
   hardware.join();
   
   return 0;
