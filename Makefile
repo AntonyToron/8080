@@ -7,6 +7,7 @@
 CC = gcc
 CPP = g++
 CFLAGS = 
+#CFLAGS = -D DEBUG
 # CFLAGS = -g
 # CFLAGS = -D NDEBUG
 # CFLAGS = -D NDEBUG -O
@@ -19,7 +20,7 @@ LIBS = -lGL -lGLEW -lglfw -lglut -lGLU -lpthread
 #       $ (CC) $ (CFLAGS) -c $<
 
 # Dependency rules for non-file targets
-all: disassemble c_arcade arcade playground
+all: disassemble c_arcade arcade playground test
 
 # clean directory
 clobber: clean
@@ -34,10 +35,14 @@ c_arcade: 8080Arcade.o CPU.o Utils.o Drivers.o
 disassemble: disassemble.o disassembler.o
 	$(CC) $(CFLAGS) $< disassembler.o -o $@
 
+test: cpu_test.o CPU.o Utils.o Drivers.o
+	$(CC) $(CFLAGS) $< CPU.o Utils.o Drivers.o -o $@
+
 playground: playground.o
 	$(CPP) $(CFLAGS) $< -o $@ $(LIBS)
 arcade: arcade_machine.o CPU.o Utils.o Drivers.o
 	$(CPP) $(CFLAGS) $< CPU.o Utils.o Drivers.o -o $@ $(LIBS)
+
 
 # object file dependencies in recipes for all binary files
 8080Arcade.o: 8080Arcade.c CPU.h Utils.h Drivers.h
@@ -47,6 +52,9 @@ CPU.o: CPU.c CPU.h
 Utils.o: Utils.c Utils.h
 	$(CC) $(CFLAGS) -c $<
 Drivers.o: Drivers.c Drivers.h
+	$(CC) $(CFLAGS) -c $<
+
+cpu_test.o: cpu_test.c CPU.h Utils.h Drivers.h
 	$(CC) $(CFLAGS) -c $<
 
 playground.o: playground.cpp

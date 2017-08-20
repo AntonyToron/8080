@@ -38,6 +38,7 @@ ArcadeMachinePorts_T am_ports_init () {
 void Arcade8080_write4 (uint8_t ac, ArcadeMachinePorts_T am_ports) {
   am_ports->shift_registers[1] = am_ports->shift_registers[0];
   am_ports->shift_registers[0] = ac;
+  //printf ("Using shift ");
 }
 
 // 8080 Arcade port 2: (Write), sets the shift amount, DOESNT RETURN IT
@@ -47,6 +48,7 @@ void Arcade8080_write4 (uint8_t ac, ArcadeMachinePorts_T am_ports) {
 // offset 7 : 8 bit result = xyyyyyyy
 void Arcade8080_write2 (uint8_t ac, ArcadeMachinePorts_T am_ports) {
   am_ports->offset = ac;
+  //printf ("Using offset ");
 }
 
 // 8080 Arcade port 3: (Read) // reads data based on shift
@@ -55,12 +57,12 @@ uint8_t Arcade8080_read3 (ArcadeMachinePorts_T am_ports) {
   uint8_t result = 0;
 
   result = ((am_ports->shift_registers[0] << am_ports->offset) & 0xff) | ((am_ports->shift_registers[1] >> am_ports->offset) & 0xff);
-
+  //printf ("Reading offset ");
   return result;
 }
 
 uint8_t Arcade8080_read0 (ArcadeMachinePorts_T am_ports) {
-
+  
   return 0x0E;
 }
 
