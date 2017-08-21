@@ -52,10 +52,11 @@ Drivers_T ArcadeDrivers() {
 
 void LOAD_ROM_invaders (State8080_T state) {
   // load into memory
-  unsigned char *buffer = readFileIntoBuffer("invaders");
+  size_t bytesRead;
+  unsigned char *buffer = readFileIntoBuffer("invaders", &bytesRead);
 
   // load the rom
-  State8080_load_mem(state, 0, buffer);
+  State8080_load_mem(state, 0, bytesRead, buffer);
     
   printf ("Successfully loaded ROM");
   

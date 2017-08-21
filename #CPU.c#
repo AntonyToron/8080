@@ -320,7 +320,8 @@ static void INR_R (State8080_T state) {
   unsigned char *opcode = &state->memory[state->pc];
   uint8_t reg = ((*opcode) & 0x38)>>3;
 
-  // source for CC info: http://altairclone.com/downloads/manuals/8080%20Programmers%20Manual.pdf vii
+  // source for CC info: http://altairclone.com/download
+  s/manuals/8080%20Programmers%20Manual.pdf vii
 
   switch (reg) {
   case 0x06:

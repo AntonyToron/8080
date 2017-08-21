@@ -6,6 +6,7 @@
  */
 
 #include <stdint.h>
+#include <stddef.h>
 
 typedef struct State8080* State8080_T;
 typedef struct ConditionCodes* ConditionCodes_T;
@@ -23,7 +24,7 @@ ConditionCodes_T ConditionCodes_init();
 
 Drivers_T Drivers_init();
 
-void State8080_load_mem(State8080_T state, int start, unsigned char *buffer);
+void State8080_load_mem(State8080_T state, int start, size_t end, unsigned char *buffer);
 
 void State8080_config_drivers_in_port(State8080_T state, uint8_t (*in) (), uint8_t port);
 

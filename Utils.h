@@ -5,5 +5,6 @@
   Author : Antony Toron
  */
 
+#include <stddef.h>
 
-unsigned char * readFileIntoBuffer(const char *filename);
+unsigned char * readFileIntoBuffer(const char *filename, size_t * count);

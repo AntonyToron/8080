@@ -6,7 +6,7 @@
 # Macros
 CC = gcc
 CPP = g++
-CFLAGS = 
+CFLAGS = -g
 #CFLAGS = -D INSTRUCTION_DEBUGGING
 #CFLAGS = -pg
 #CFLAGS = -D DEBUG
@@ -38,7 +38,7 @@ disassemble: disassemble.o disassembler.o
 	$(CC) $(CFLAGS) $< disassembler.o -o $@
 
 test: cpu_test.o CPU.o Utils.o Drivers.o
-	$(CC) $(CFLAGS) $< CPU.o Utils.o Drivers.o -o $@
+	$(CC) $(CFLAGS) -g $< CPU.o Utils.o Drivers.o -o $@
 
 playground: playground.o
 	$(CPP) $(CFLAGS) $< -o $@ $(LIBS)

@@ -10,7 +10,7 @@
 #include <stddef.h>
 #include <stdlib.h>
 
-unsigned char * readFileIntoBuffer(const char *filename) {
+unsigned char * readFileIntoBuffer(const char *filename, size_t *count) {
   FILE *f = fopen (filename, "rb");
   //printf ("Opening the file\n");
 
@@ -28,6 +28,8 @@ unsigned char * readFileIntoBuffer(const char *filename) {
 
   size_t bytesRead = fread(buffer, 1, fsize, f);
   fclose(f);
+
+  *count = bytesRead;
 
   return buffer;
 }
