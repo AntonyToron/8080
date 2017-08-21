@@ -139,35 +139,23 @@ static void UpdateCCZeroSignParity(State8080_T state, uint16_t result, uint8_t l
   state->cc->ac = (lsb > 9);
 }
 
-static uint8_t GetRegister(State8080_T state, uint8_t reg) {
-  switch (reg) {
-  case 0x06: ;
-    // H = high order bits, L = lower order bits, so shift H 8 bits up
-    uint16_t offset = (state->registers[4]<<8) | (state->registers[5] & 0xff);
-    return state->memory[offset]; break;
-  case 0x07:
-    return state->registers[7]; break;
-  default:
-    if (reg > 7) {
-      fprintf (stderr, "Could not find register in get register");
-      exit(1);
-    }
-    return state->registers[reg];
-  }
+static void PushPC(State8080_T state) {
+  state->memory[state->sp - 1] = (uint8_t) ((state->pc >> 8) & 0xff);
+  state->memory[state->sp - 2] = (uint8_t) (state->pc & 0x00ff);
+
+  state->sp -= 2;
 }
 
-static uint8_t AddToRegister (State8080_T state, uint8_t reg, uint8_t add) {
+static uint8_t GetRegister(State8080_T state, uint8_t reg) {
   switch (reg) {
-  case 0x06: ;
-    // H = high order bits, L = lower order bits, so shift H 8 bits up
-    uint16_t offset = (state->registers[4]<<8) | (state->registers[5]);
-    state->memory[offset] += add; return state->memory[offset]; break;
-  default:
-    if (reg > 7) { 
-      fprintf(stderr, "Could not find this register in addtoreg");
-      exit(1);
+  case 0x06:
+    {
+      // H = high order bits, L = lower order bits, so shift H 8 bits up
+      uint16_t offset = (state->registers[4]<<8) | (state->registers[5] & 0xff);
+      return state->memory[offset]; break;
     }
-    state->registers[reg] += add; return state->registers[reg]; break;
+  default:
+    return state->registers[reg];
   }
 }
 
@@ -187,11 +175,6 @@ static void MOV (State8080_T state) {
   else {
     state->registers[dest] = state->registers[source];
   }
-  //else {
-  //  uint16_t offset = (state->registers[4]<<8) | (state->registers[5] & 0xff);
-  //  state->memory[offset] = state->memory[offset];
-  //}
-
 }
 
 static void MVI (State8080_T state) {
@@ -318,6 +301,20 @@ static void ORA (State8080_T state) {
   
 }
 
+static void CMP (State8080_T state) {
+  unsigned char *opcode = &state->memory[state->pc];
+  uint8_t reg = ((*opcode) & 0x07);
+  uint8_t reg_value = GetRegister(state, reg);
+  uint16_t result = (state->registers[7] - reg_value) & 0xffff;
+  uint8_t lsb = (state->registers[7] & 0x0f) - (reg_value & 0x0f);
+  
+  UpdateCCAll(state, result, lsb);
+  if (state->registers[7] >= reg_value)
+    state->cc->c = 0;
+  else if (state->registers[7] < reg_value)
+    state->cc->c = 1;
+}
+
 // INR register r from opcode
 static void INR_R (State8080_T state) {
   unsigned char *opcode = &state->memory[state->pc];
@@ -331,14 +328,14 @@ static void INR_R (State8080_T state) {
       // H = high order bits, L = lower order bits, so shift H 8 bits up
       uint16_t offset = (state->registers[4]<<8) | (state->registers[5] & 0xff);
       uint8_t lsb = (state->memory[offset] & 0x0f) + 1;
-      state->memory[offset]++;
+      state->memory[offset] = state->memory[offset] + 1;
       UpdateCCZeroSignParity(state, state->memory[offset], lsb);
       break;
     }
   default:
     {
       uint8_t lsb = (state->registers[reg] & 0x0f) + 1;
-      state->registers[reg]++;
+      state->registers[reg] = state->registers[reg] + 1;
       UpdateCCZeroSignParity(state, state->registers[reg], lsb);
       break;
     }
@@ -356,14 +353,14 @@ static void DCR_R (State8080_T state) {
       // H = high order bits, L = lower order bits, so shift H 8 bits up
       uint16_t offset = (state->registers[4]<<8) | (state->registers[5] & 0xff);
       uint8_t lsb = (state->memory[offset] & 0x0f) - 1;
-      state->memory[offset]--;
+      state->memory[offset] = state->memory[offset] - 1;
       UpdateCCZeroSignParity(state, state->memory[offset], lsb);
       break;
     }
   default:
     {
       uint8_t lsb = (state->registers[reg] & 0x0f) - 1;
-      state->registers[reg]--;
+      state->registers[reg] = state->registers[reg] - 1;
       UpdateCCZeroSignParity(state, state->registers[reg], lsb);
       break;
     }
@@ -381,7 +378,6 @@ static void JMP_conditional (State8080_T state, uint8_t condition) {
 }
 
 static void RET_conditional (State8080_T state, uint8_t condition) {
-  unsigned char *opcode = &state->memory[state->pc];
   if (condition) {
     // PCL(low order bits) <- sp, PCH <- sp + 1, SP <- sp + 2
     uint16_t updatedPC = (state->memory[state->sp + 1] << 8) | (state->memory[state->sp] & 0xff);
@@ -401,11 +397,13 @@ static void CALL_conditional (State8080_T state, uint8_t condition) {
   if (condition) {
     // (sp - 1) <- PCH, (sp - 2) <- PCL, SP -= 2, PC <- addr
     state->pc += 2; // for data bytes
-    
-    state->memory[state->sp - 1] = (state->pc >> 8);
-    state->memory[state->sp - 2] = (uint8_t) state->pc;
+    /*
+    state->memory[state->sp - 1] = ((state->pc >> 8) & 0xff);
+    state->memory[state->sp - 2] = (uint8_t) (state->pc & 0xff);
 
     state->sp -= 2;
+    */
+    PushPC(state);
     
     state->pc = (opcode[2] << 8) | (opcode[1] & 0xff); // little-endian
   }
@@ -413,21 +411,15 @@ static void CALL_conditional (State8080_T state, uint8_t condition) {
     state->pc += 2; // for data bytes
 }
 
-uint8_t MachineIN (State8080_T state, uint8_t port) {
-  return 0; // placeholder
-}
-
-void MachineOUT (State8080_T state, uint8_t port) {
-  return; // placeholder
-}
-
 // similar to call, but calls interrupt code
 void RST(State8080_T state, uint8_t opcode) {  
   // push program counter
-  state->memory[state->sp - 1] = (state->pc >> 8) & 0xff;
-  state->memory[state->sp - 2] = (uint8_t) (state->pc & 0x00ff);
+  /*state->memory[state->sp - 1] = ((state->pc >> 8) & 0xff);
+  state->memory[state->sp - 2] = (uint8_t) (state->pc & 0xff);
   
   state->sp -= 2;
+  */
+  PushPC(state);
   if (flag)
     printf ("performing reset\n");
 
@@ -450,7 +442,7 @@ void Emulate8080Op(State8080_T state, unsigned char *opcode) {
   //if (state->pc == 0x0133) {
   //  printf ("Got to drawing");
   //}
-  
+  // inx sp, dcx sp, cmp, not implemented
   switch (*opcode) {
   case 0x00:               // NOP
     state->pc += 1;
@@ -789,7 +781,7 @@ void Emulate8080Op(State8080_T state, unsigned char *opcode) {
 
       // H <-> (SP + 1)
       temp = state->memory[state->sp + 1];
-      state->memory[state->sp] = state->registers[4];
+      state->memory[state->sp + 1] = state->registers[4]; // IMPORTANT
       state->registers[4] = temp;     
     }
     state->pc += 1;
@@ -860,11 +852,13 @@ void Emulate8080Op(State8080_T state, unsigned char *opcode) {
     {
       // for op, and two data bytes, next instruction IMPORTANT
       state->pc += 3;
-      
+      /*
       state->memory[state->sp - 1] = (uint8_t) ((state->pc >> 8) & 0xff);
       state->memory[state->sp - 2] = (uint8_t) (state->pc & 0x00ff);
 
       state->sp -= 2;
+      */
+      PushPC(state);
       
       uint16_t addr = (opcode[2] << 8) | (opcode[1] & 0xff); // little-endian
       state->pc = addr;
@@ -1253,6 +1247,20 @@ void Emulate8080Op(State8080_T state, unsigned char *opcode) {
   case 0xB6:              // ORA M, OR register with A, goes into A
   case 0xB7:              // ORA A, OR register with A, goes into A
     ORA (state);
+    state->pc += 1;
+    break;
+
+    
+    // ------------------------ CMP ------------------------------
+  case 0xB8:              // CMP B, compare register with A
+  case 0xB9:              // CMP C, compare register with A
+  case 0xBA:              // CMP D, compare register with A
+  case 0xBB:              // CMP E, compare register with A
+  case 0xBC:              // CMP H, compare register with A
+  case 0xBD:              // CMP L, compare register with A
+  case 0xBE:              // CMP M, compare memory with A
+  case 0xBF:              // CMP A, compare register with A
+    CMP (state);
     state->pc += 1;
     break;
 
@@ -2076,6 +2084,19 @@ int op_clockCycles(State8080_T state) {
     return 7;
   case 0xB7:              // ORA A, OR register with A, goes into A
     return 4;
+
+       // ------------------------ CMP ------------------------------
+  case 0xB8:              // CMP B, compare register with A
+  case 0xB9:              // CMP C, compare register with A
+  case 0xBA:              // CMP D, compare register with A
+  case 0xBB:              // CMP E, compare register with A
+  case 0xBC:              // CMP H, compare register with A
+  case 0xBD:              // CMP L, compare register with A
+    return 4;
+  case 0xBE:              // CMP M, compare memory with A
+    return 7;
+  case 0xBF:              // CMP A, compare register with A
+    return 4;
     
     // ----------------------- ANI ----------------------------
   case 0xE6:              // ANI, and immediate with A
@@ -2107,7 +2128,7 @@ int op_clockCycles(State8080_T state) {
     return 10;
 
     // --------------------- CONTROL -----------------------------
-  case 0xFB:              // EL, enable interrupts
+  case 0xFB:              // EI, enable interrupts
   case 0xF3:              // DI, disable interrupts
     return 4;
   case 0x76:              // HLT, halt
