@@ -1484,7 +1484,7 @@ void Emulate8080Op(State8080_T state, unsigned char *opcode) {
     UnimplementedInstruction(state);
   }
 
-  #ifdef DEBUG
+  //#ifdef DEBUG
   //if (state->pc == 0x0ABB)
   //  flag = 1;
   if (flag) {
@@ -1501,7 +1501,7 @@ void Emulate8080Op(State8080_T state, unsigned char *opcode) {
   
   fflush(stdout);
   }
-  #endif
+  //#endif
 
   #ifdef INSTRUCTION_DEBUGGING
   if (state->sp < 0x22ff && state->pc != 0) {

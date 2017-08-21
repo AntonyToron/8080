@@ -252,18 +252,7 @@ void processSpecialKeys(int key, int x, int y) {
 }
 
 void graphicsInterrupt(int value) {
-  // set IE to true
-  //unsigned char IE = 0xFB;
-  //Emulate8080Op(state, &IE);
-
-  // PERFORM THE GRAPHICS INTERRUPT
-  
-  //State8080_setIE(state, 1);
-  //printf ("Setting IE to 1 from interrupt\n");
-
-  // say that it was from hardware
-  hardware_interrupt = true;
-
+  // PUSH AN INTERRUPT
   if (last_interrupt == 1) {
     State8080_pushInterrupt(state, 2); // graphics interrupt
     last_interrupt = 2;
@@ -273,13 +262,12 @@ void graphicsInterrupt(int value) {
     last_interrupt = 1;
   }
 
-  cv.notify_all(); // notify of hardware interrupt
-
-  if (f)
-    printf ("Interrupt from hardware\n");
-  
   // POPULATE WINDOW WITH IN-MEMORY VIDEO RAM, (effective 60hz draw)
   populateWindowFromMemory();
+
+  // NOTIFY PROCESSOR OF INTERRUPT
+  hardware_interrupt = true;
+  cv.notify_all(); // notify of hardware interrupt
 }
 
 void graphicsInterruptCallback(int x) {
@@ -332,50 +320,29 @@ void * processorThread(void *x) {
     // instructions that would be executed during the 60hz window on the 8080
     // are emulated similarly here.
     if ((cyclesExecuted * clock_time_milliseconds) > 16.67) {
-      #ifdef DEBUG
-      printf ("Locking execution %ld %f\n", cyclesExecuted, cyclesExecuted * clock_time_milliseconds);
-      #endif
-      
+      // when too many instructions happen before interrupt,
+      // pause execution of instructions until a hardware interrupt should
+      // happen
       std::unique_lock<std::mutex> lk(m);
       cv.wait_for(lk, std::chrono::microseconds(16670), []{return hardware_interrupt;});
-      
-      if (f)
-	printf ("Resetting cycles\n");
-      //cyclesExecuted = 0; // reset cycles
-      // check if interrupts enabled, and an interrupt happened
-      /*
-      if (State8080_ie(state) && hardware_interrupt) { 
-	hardware_interrupt = false;
-	
-        
-	// get interrupt set by hardware  11AAA111
+
+      // when unlocked, register the fact that we have recieved a hardware
+      // interrupt
+      hardware_interrupt = false; // reset
+      cyclesExecuted     = 0;     // reset cylcesExecuted (realize interrupt)
+
+      // check if interrupts are enabled on the CPU, in which case an interrupt
+      // should actually be performed
+      if (State8080_ie(state)) {
 	unsigned char op = (State8080_popInterrupt(state) << 3) | 0xC7;
-	//cyclesExecuted = 0; // reset cycles
-	cyclesExecuted += 11; // cycles for RST
+	cyclesExecuted += 11;      // cycles for RST
 	Emulate8080Op(state, &op);
-	State8080_setIE(state, 0); // IE is set to 0 before executing interrupt
-	
+	State8080_setIE(state, 0); // IE is set to 0 before interrupt exec
       }
-      */
-    }
-    // this will cascade into interrupt code
-    if (State8080_ie(state) && hardware_interrupt) { 
-      hardware_interrupt = false;
-      
-      
-      // get interrupt set by hardware  11AAA111
-      unsigned char op = (State8080_popInterrupt(state) << 3) | 0xC7;
-      cyclesExecuted = 0; // reset cycles
-      cyclesExecuted += 11; // cycles for RST
-      Emulate8080Op(state, &op);
-      State8080_setIE(state, 0); // IE is set to 0 before executing interrupt
-      
-    }
-    
-    else {
+    }  
+    else {  // ELSE, can continue executing instructions as usual
       int cycles = op_clockCycles(state); // how many cycles this should take
-      cyclesExecuted += cycles;
-      
+      cyclesExecuted += cycles;      
       Emulate8080State(state);     
     }
   } 
