@@ -56,6 +56,8 @@ std::mutex m;
 std::mutex m2;
 std::condition_variable cv;
 
+
+uint8_t f = 0;
 // -------------------------- STATE INITIALIZATION ---------------------
 
 // implement drivers
@@ -89,6 +91,10 @@ uint8_t ArcadeRead1 () {
   return Arcade8080_read1(am_ports);
 }
 
+uint8_t ArcadeRead2 () {
+  return Arcade8080_read2(am_ports);
+}
+
 Drivers_T ArcadeDrivers() {
   Drivers_T drivers = Drivers_init();
   am_ports = am_ports_init();
@@ -99,6 +105,7 @@ Drivers_T ArcadeDrivers() {
   config_drivers_in_port(drivers, &ArcadeRead3, 3);
   config_drivers_in_port(drivers, &ArcadeRead0, 0);
   config_drivers_in_port(drivers, &ArcadeRead1, 1);
+  config_drivers_in_port(drivers, &ArcadeRead2, 2);
   
   return drivers;
 }
@@ -218,6 +225,10 @@ void processNormalKeys(unsigned char key, int x, int y) {
     State8080_free(state);
     exit(0);
   }
+  else if (key == 'y') {
+    startPrintingOut();
+    f = 1;
+  }
   // can config a, w, s, d too
 }
 
@@ -247,7 +258,8 @@ void graphicsInterrupt(int value) {
 
   // PERFORM THE GRAPHICS INTERRUPT
   
-  State8080_setIE(state, 1);
+  //State8080_setIE(state, 1);
+  //printf ("Setting IE to 1 from interrupt\n");
 
   // say that it was from hardware
   hardware_interrupt = true;
@@ -262,6 +274,9 @@ void graphicsInterrupt(int value) {
   }
 
   cv.notify_all(); // notify of hardware interrupt
+
+  if (f)
+    printf ("Interrupt from hardware\n");
   
   // POPULATE WINDOW WITH IN-MEMORY VIDEO RAM, (effective 60hz draw)
   populateWindowFromMemory();
@@ -316,26 +331,47 @@ void * processorThread(void *x) {
     // timer, in batches. This means that approximately the same amount of
     // instructions that would be executed during the 60hz window on the 8080
     // are emulated similarly here.
-    if ((cyclesExecuted * clock_time_milliseconds) > 16) {
+    if ((cyclesExecuted * clock_time_milliseconds) > 16.67) {
       #ifdef DEBUG
       printf ("Locking execution %ld %f\n", cyclesExecuted, cyclesExecuted * clock_time_milliseconds);
       #endif
       
       std::unique_lock<std::mutex> lk(m);
       cv.wait_for(lk, std::chrono::microseconds(16670), []{return hardware_interrupt;});
+      
+      if (f)
+	printf ("Resetting cycles\n");
+      //cyclesExecuted = 0; // reset cycles
+      // check if interrupts enabled, and an interrupt happened
+      /*
+      if (State8080_ie(state) && hardware_interrupt) { 
+	hardware_interrupt = false;
+	
+        
+	// get interrupt set by hardware  11AAA111
+	unsigned char op = (State8080_popInterrupt(state) << 3) | 0xC7;
+	//cyclesExecuted = 0; // reset cycles
+	cyclesExecuted += 11; // cycles for RST
+	Emulate8080Op(state, &op);
+	State8080_setIE(state, 0); // IE is set to 0 before executing interrupt
+	
+      }
+      */
     }
     // this will cascade into interrupt code
-    
-    // check if interrupts enabled, and an interrupt happened
     if (State8080_ie(state) && hardware_interrupt) { 
       hardware_interrupt = false;
-      cyclesExecuted = 0; // reset cycles
-           
+      
+      
       // get interrupt set by hardware  11AAA111
       unsigned char op = (State8080_popInterrupt(state) << 3) | 0xC7;
+      cyclesExecuted = 0; // reset cycles
+      cyclesExecuted += 11; // cycles for RST
       Emulate8080Op(state, &op);
-      State8080_setIE(state, 1);
+      State8080_setIE(state, 0); // IE is set to 0 before executing interrupt
+      
     }
+    
     else {
       int cycles = op_clockCycles(state); // how many cycles this should take
       cyclesExecuted += cycles;

@@ -54,9 +54,9 @@ void Arcade8080_write2 (uint8_t ac, ArcadeMachinePorts_T am_ports) {
 // 8080 Arcade port 3: (Read) // reads data based on shift
 // returns result from port 2 writes
 uint8_t Arcade8080_read3 (ArcadeMachinePorts_T am_ports) {
-  uint8_t result = 0;
+  uint8_t result;
 
-  result = ((am_ports->shift_registers[0] << am_ports->offset) & 0xff) | ((am_ports->shift_registers[1] >> am_ports->offset) & 0xff);
+  result = ((am_ports->shift_registers[0] & 0xff) << am_ports->offset) | ((am_ports->shift_registers[1] & 0xff) >> am_ports->offset);
   //printf ("Reading offset ");
   return result;
 }
@@ -69,5 +69,9 @@ uint8_t Arcade8080_read0 (ArcadeMachinePorts_T am_ports) {
 uint8_t Arcade8080_read1 (ArcadeMachinePorts_T am_ports) {
 
   return 0x08;
+}
+
+uint8_t Arcade8080_read2 (ArcadeMachinePorts_T am_ports) {
+  return 0x00;
 }
 

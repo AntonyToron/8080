@@ -21,3 +21,5 @@ uint8_t Arcade8080_read3 (ArcadeMachinePorts_T am_ports);
 uint8_t Arcade8080_read0 (ArcadeMachinePorts_T am_ports);
 
 uint8_t Arcade8080_read1 (ArcadeMachinePorts_T am_ports);
+
+uint8_t Arcade8080_read2 (ArcadeMachinePorts_T am_ports);

@@ -1,0 +1,222 @@
+Flat profile:
+
+Each sample counts as 0.01 seconds.
+  %   cumulative   self              self     total           
+ time   seconds   seconds    calls  ns/call  ns/call  name    
+ 47.07      0.16     0.16  7611500    21.03    21.03  Emulate8080Op
+ 23.54      0.24     0.08                             CALL_conditional
+ 23.54      0.32     0.08                             etext
+  2.94      0.33     0.01                             Drivers_init
+  2.94      0.34     0.01                             empty_IN
+  0.00      0.34     0.00  9195203     0.00     0.00  _fini
+  0.00      0.34     0.00     6864     0.00     0.00  INR_R
+  0.00      0.34     0.00     2059     0.00     0.00  MachineIN
+  0.00      0.34     0.00     1260     0.00     0.00  RET_conditional
+  0.00      0.34     0.00     1228     0.00     0.00  DCR_R
+  0.00      0.34     0.00        2     0.00     0.00  JMP_conditional
+
+ %         the percentage of the total running time of the
+time       program used by this function.
+
+cumulative a running sum of the number of seconds accounted
+ seconds   for by this function and those listed above it.
+
+ self      the number of seconds accounted for by this
+seconds    function alone.  This is the major sort for this
+           listing.
+
+calls      the number of times this function was invoked, if
+           this function is profiled, else blank.
+
+ self      the average number of milliseconds spent in this
+ms/call    function per call, if this function is profiled,
+	   else blank.
+
+ total     the average number of milliseconds spent in this
+ms/call    function and its descendents per call, if this
+	   function is profiled, else blank.
+
+name       the name of the function.  This is the minor sort
+           for this listing. The index shows the location of
+	   the function in the gprof listing. If the index is
+	   in parenthesis it shows where it would appear in
+	   the gprof listing if it were to be printed.
+
+Copyright (C) 2012-2015 Free Software Foundation, Inc.
+
+Copying and distribution of this file, with or without modification,
+are permitted in any medium without royalty provided the copyright
+notice and this notice are preserved.
+
+		     Call graph (explanation follows)
+
+
+granularity: each sample hit covers 2 byte(s) for 2.94% of 0.34 seconds
+
+index % time    self  children    called     name
+                                                 <spontaneous>
+[1]     61.3    0.08    0.13                 etext [1]
+                0.13    0.00 6104232/7611500     Emulate8080Op [2]
+                0.00    0.00    1227/1228        DCR_R [12]
+                0.00    0.00     777/9195203     _fini [67]
+-----------------------------------------------
+                             3173118             Emulate8080Op [2]
+                0.00    0.00    3090/7611500     RST [8]
+                0.00    0.00   14798/7611500     readFileIntoBuffer [7]
+                0.03    0.00 1489380/7611500     am_ports_init [4]
+                0.13    0.00 6104232/7611500     etext [1]
+[2]     47.1    0.16    0.00 7611500+3173118 Emulate8080Op [2]
+                0.00    0.00 9191929/9195203     _fini [67]
+                0.00    0.00    6864/6864        INR_R [9]
+                0.00    0.00    2059/2059        MachineIN [10]
+                0.00    0.00    1260/1260        RET_conditional [11]
+                             3173118             Emulate8080Op [2]
+-----------------------------------------------
+                                                 <spontaneous>
+[3]     23.5    0.08    0.00                 CALL_conditional [3]
+                0.00    0.00    1259/9195203     _fini [67]
+-----------------------------------------------
+                                                 <spontaneous>
+[4]      9.2    0.00    0.03                 am_ports_init [4]
+                0.03    0.00 1489380/7611500     Emulate8080Op [2]
+-----------------------------------------------
+                                                 <spontaneous>
+[5]      2.9    0.01    0.00                 Drivers_init [5]
+-----------------------------------------------
+                                                 <spontaneous>
+[6]      2.9    0.01    0.00                 empty_IN [6]
+-----------------------------------------------
+                                                 <spontaneous>
+[7]      0.1    0.00    0.00                 readFileIntoBuffer [7]
+                0.00    0.00   14798/7611500     Emulate8080Op [2]
+-----------------------------------------------
+                                                 <spontaneous>
+[8]      0.0    0.00    0.00                 RST [8]
+                0.00    0.00    3090/7611500     Emulate8080Op [2]
+-----------------------------------------------
+                                4577             INR_R [9]
+                0.00    0.00    6864/6864        Emulate8080Op [2]
+[9]      0.0    0.00    0.00    6864+4577    INR_R [9]
+                                4577             INR_R [9]
+-----------------------------------------------
+                0.00    0.00    2059/2059        Emulate8080Op [2]
+[10]     0.0    0.00    0.00    2059         MachineIN [10]
+-----------------------------------------------
+                0.00    0.00    1260/1260        Emulate8080Op [2]
+[11]     0.0    0.00    0.00    1260         RET_conditional [11]
+                0.00    0.00       2/2           JMP_conditional [13]
+                0.00    0.00       1/1228        DCR_R [12]
+                0.00    0.00       1/9195203     _fini [67]
+-----------------------------------------------
+                0.00    0.00       1/1228        RET_conditional [11]
+                0.00    0.00    1227/1228        etext [1]
+[12]     0.0    0.00    0.00    1228         DCR_R [12]
+                0.00    0.00    1232/9195203     _fini [67]
+-----------------------------------------------
+                0.00    0.00       2/2           RET_conditional [11]
+[13]     0.0    0.00    0.00       2         JMP_conditional [13]
+                0.00    0.00       5/9195203     _fini [67]
+-----------------------------------------------
+                0.00    0.00       1/9195203     RET_conditional [11]
+                0.00    0.00       5/9195203     JMP_conditional [13]
+                0.00    0.00     777/9195203     etext [1]
+                0.00    0.00    1232/9195203     DCR_R [12]
+                0.00    0.00    1259/9195203     CALL_conditional [3]
+                0.00    0.00 9191929/9195203     Emulate8080Op [2]
+[67]     0.0    0.00    0.00 9195203         _fini [67]
+-----------------------------------------------
+
+ This table describes the call tree of the program, and was sorted by
+ the total amount of time spent in each function and its children.
+
+ Each entry in this table consists of several lines.  The line with the
+ index number at the left hand margin lists the current function.
+ The lines above it list the functions that called this function,
+ and the lines below it list the functions this one called.
+ This line lists:
+     index	A unique number given to each element of the table.
+		Index numbers are sorted numerically.
+		The index number is printed next to every function name so
+		it is easier to look up where the function is in the table.
+
+     % time	This is the percentage of the `total' time that was spent
+		in this function and its children.  Note that due to
+		different viewpoints, functions excluded by options, etc,
+		these numbers will NOT add up to 100%.
+
+     self	This is the total amount of time spent in this function.
+
+     children	This is the total amount of time propagated into this
+		function by its children.
+
+     called	This is the number of times the function was called.
+		If the function called itself recursively, the number
+		only includes non-recursive calls, and is followed by
+		a `+' and the number of recursive calls.
+
+     name	The name of the current function.  The index number is
+		printed after it.  If the function is a member of a
+		cycle, the cycle number is printed between the
+		function's name and the index number.
+
+
+ For the function's parents, the fields have the following meanings:
+
+     self	This is the amount of time that was propagated directly
+		from the function into this parent.
+
+     children	This is the amount of time that was propagated from
+		the function's children into this parent.
+
+     called	This is the number of times this parent called the
+		function `/' the total number of times the function
+		was called.  Recursive calls to the function are not
+		included in the number after the `/'.
+
+     name	This is the name of the parent.  The parent's index
+		number is printed after it.  If the parent is a
+		member of a cycle, the cycle number is printed between
+		the name and the index number.
+
+ If the parents of the function cannot be determined, the word
+ `<spontaneous>' is printed in the `name' field, and all the other
+ fields are blank.
+
+ For the function's children, the fields have the following meanings:
+
+     self	This is the amount of time that was propagated directly
+		from the child into the function.
+
+     children	This is the amount of time that was propagated from the
+		child's children to the function.
+
+     called	This is the number of times the function called
+		this child `/' the total number of times the child
+		was called.  Recursive calls by the child are not
+		listed in the number after the `/'.
+
+     name	This is the name of the child.  The child's index
+		number is printed after it.  If the child is a
+		member of a cycle, the cycle number is printed
+		between the name and the index number.
+
+ If there are any cycles (circles) in the call graph, there is an
+ entry for the cycle-as-a-whole.  This entry shows who called the
+ cycle (as parents) and the members of the cycle (as children.)
+ The `+' recursive calls entry shows the number of function calls that
+ were internal to the cycle, and the calls entry for each member shows,
+ for that member, how many times it was called from other members of
+ the cycle.
+
+Copyright (C) 2012-2015 Free Software Foundation, Inc.
+
+Copying and distribution of this file, with or without modification,
+are permitted in any medium without royalty provided the copyright
+notice and this notice are preserved.
+
+Index by function name
+
+   [3] CALL_conditional        [9] INR_R                  [67] _fini
+  [12] DCR_R                  [13] JMP_conditional         [6] empty_IN
+   [5] Drivers_init           [10] MachineIN               [1] etext
+   [2] Emulate8080Op          [11] RET_conditional

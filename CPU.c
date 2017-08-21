@@ -11,6 +11,11 @@
 #include <stdlib.h>
 #include "CPU.h"
 
+uint8_t flag = 0;
+void startPrintingOut() {
+  flag = 1;
+}
+
 
 struct ConditionCodes { // specifying bit count (1 bit flags/flip flops)
   uint8_t z : 1;   // zero flag
@@ -171,23 +176,22 @@ static void MOV (State8080_T state) {
   uint8_t dest = ((*opcode) & 0x38)>>3;
   uint8_t source = (*opcode) & 0x07;
 
-  if (dest == 6 || source == 6) {
-    if (dest == 6 && source != 6) {
-      uint16_t offset = (state->registers[4]<<8) | (state->registers[5] & 0xff);
-      state->memory[offset] = state->registers[source];
-    }
-    else if (dest != 6 && source == 6) {
-      uint16_t offset = (state->registers[4]<<8) | (state->registers[5] & 0xff);
-      state->registers[dest] = state->memory[offset];
-    }
-    else {
-      uint16_t offset = (state->registers[4]<<8) | (state->registers[5] & 0xff);
-      state->memory[offset] = state->memory[offset];
-    }
+  if (dest == 6 && source != 6) {
+    uint16_t offset = (state->registers[4]<<8) | (state->registers[5] & 0xff);
+    state->memory[offset] = state->registers[source];
+  }
+  else if (dest != 6 && source == 6) {
+    uint16_t offset = (state->registers[4]<<8) | (state->registers[5] & 0xff);
+    state->registers[dest] = state->memory[offset];
   }
   else {
     state->registers[dest] = state->registers[source];
   }
+  //else {
+  //  uint16_t offset = (state->registers[4]<<8) | (state->registers[5] & 0xff);
+  //  state->memory[offset] = state->memory[offset];
+  //}
+
 }
 
 static void MVI (State8080_T state) {
@@ -332,14 +336,12 @@ static void INR_R (State8080_T state) {
       break;
     }
   default:
-    if (reg > 7) {
-      fprintf(stderr, "Could not find this register in INC_R\n");
-      exit(1);
+    {
+      uint8_t lsb = (state->registers[reg] & 0x0f) + 1;
+      state->registers[reg]++;
+      UpdateCCZeroSignParity(state, state->registers[reg], lsb);
+      break;
     }
-    uint8_t lsb = (state->registers[reg] & 0x0f) + 1;
-    state->registers[reg]++;
-    UpdateCCZeroSignParity(state, state->registers[reg], lsb);
-    break;
   }
 }
 
@@ -359,14 +361,12 @@ static void DCR_R (State8080_T state) {
       break;
     }
   default:
-    if (reg > 7) {
-      fprintf(stderr, "Could not find this register in DCR_R\n");
-      exit(1);
+    {
+      uint8_t lsb = (state->registers[reg] & 0x0f) - 1;
+      state->registers[reg]--;
+      UpdateCCZeroSignParity(state, state->registers[reg], lsb);
+      break;
     }
-    uint8_t lsb = (state->registers[reg] & 0x0f) - 1;
-    state->registers[reg]--;
-    UpdateCCZeroSignParity(state, state->registers[reg], lsb);
-    break;
   }
 }
  
@@ -402,8 +402,8 @@ static void CALL_conditional (State8080_T state, uint8_t condition) {
     // (sp - 1) <- PCH, (sp - 2) <- PCL, SP -= 2, PC <- addr
     state->pc += 2; // for data bytes
     
-    state->memory[state->sp - 1] = (state->pc >> 8) & 0xff;
-    state->memory[state->sp - 2] = (uint8_t) (state->pc & 0x00ff);
+    state->memory[state->sp - 1] = (state->pc >> 8);
+    state->memory[state->sp - 2] = (uint8_t) state->pc;
 
     state->sp -= 2;
     
@@ -428,17 +428,29 @@ void RST(State8080_T state, uint8_t opcode) {
   state->memory[state->sp - 2] = (uint8_t) (state->pc & 0x00ff);
   
   state->sp -= 2;
+  if (flag)
+    printf ("performing reset\n");
 
   // 11AAA111 -> 00AAA000
   uint16_t addr = (opcode & 0x38) & 0xffff;
   state->pc = addr;
 }
-
+uint8_t times = 0;
 void Emulate8080Op(State8080_T state, unsigned char *opcode) {
+  #ifdef INSTRUCTION_DEBUGGING
+  if (state->pc == 0x8)
+    printf ("RST 1\n");
+  else if (state->pc == 0x10)
+    printf ("RST 2\n");
+  else if (state->pc == 0x87)
+    printf ("Leaving RST\n");
+  #endif
+  
   // NOTE: many of the instructions update PC <- PC + 1, for the op
-  if (state->pc == 0x0133) {
-    printf ("Got to drawing");
-  }
+  //if (state->pc == 0x0133) {
+  //  printf ("Got to drawing");
+  //}
+  
   switch (*opcode) {
   case 0x00:               // NOP
     state->pc += 1;
@@ -1473,6 +1485,10 @@ void Emulate8080Op(State8080_T state, unsigned char *opcode) {
   }
 
   #ifdef DEBUG
+  //if (state->pc == 0x0ABB)
+  //  flag = 1;
+  if (flag) {
+    
   //  PRINT CURRENT INSTRUCTION AND STATE
   printf("\t CURRENT INSTRUCTION: $%02x\n", *opcode);
   
@@ -1484,7 +1500,26 @@ void Emulate8080Op(State8080_T state, unsigned char *opcode) {
   printf("\n");
   
   fflush(stdout);
+  }
   #endif
+
+  #ifdef INSTRUCTION_DEBUGGING
+  if (state->sp < 0x22ff && state->pc != 0) {
+    fprintf(stderr, "Stack pointer is too low: %i on instruction $%02x, pc $%04x\n", state->sp, *opcode, state->pc);
+    times++;
+    if (times > 15)
+      exit(0);
+  }
+  #endif
+  /*
+  if (state->pc == 0x1A36) {
+    printf("On 1a36, B $%02x, zero=%d\n", state->registers[0], state->cc->z);
+  }
+  else if (state->pc == 0x1A3A) {
+    printf("on 1a3A, B $%02x, zero=%d, pc $%04x\n", state->registers[0], state->cc->z, state->pc);
+  }
+  */
+  //printf("Stack pointer : $%04x, pc : $%04x\n", state->sp, state->pc);
 }
 
 void Emulate8080State(State8080_T state) {
@@ -2067,7 +2102,7 @@ int op_clockCycles(State8080_T state) {
     // ------------------ INPUT/OUTPUT -------------------------
     // TODO: THESE ARE TEMPORARY PLACE HOLDERS FOR THESE FUNCTIONS
     // SHOULD BE MOVED OUTSIDE
-  case 0xDB: ;            // IN, input
+  case 0xDB:              // IN, input
   case 0xD3:              // OUT, output
     return 10;
 

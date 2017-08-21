@@ -7,11 +7,13 @@
 CC = gcc
 CPP = g++
 CFLAGS = 
+#CFLAGS = -D INSTRUCTION_DEBUGGING
+#CFLAGS = -pg
 #CFLAGS = -D DEBUG
 # CFLAGS = -g
 # CFLAGS = -D NDEBUG
 # CFLAGS = -D NDEBUG -O
-CPPFLAGS = -std=c++11 
+CPPFLAGS = -std=c++11
 
 LIBS = -lGL -lGLEW -lglfw -lglut -lGLU -lpthread
 

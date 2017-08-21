@@ -46,3 +46,5 @@ uint8_t State8080_popInterrupt(State8080_T state);
 int op_clockCycles(State8080_T state);
 
 uint8_t *pointerToMemoryAt(State8080_T state, uint16_t addr);
+
+void startPrintingOut();
