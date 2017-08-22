@@ -1,5 +1,7 @@
 debugoutput
 output
+out
 
 ./output
 ./debugoutput
+./out

@@ -49,10 +49,10 @@ void LOAD_test (State8080_T state) {
   unsigned char jump[3] = {0xc3, 0x00, 0x01};
   State8080_load_mem(state, 0x000, (size_t) 3, jump);
   unsigned char x[1] = {0x01};
-  State8080_load_mem(state, 0x0002, (size_t) 1, x);
+  State8080_load_mem(state, 0x0002, 0x02 + (size_t) 1, x);
 
   unsigned char stack[1] = {0x70};
-  State8080_load_mem(state, 0x368, (size_t) 1, stack);
+  State8080_load_mem(state, 0x368, 0x368 + (size_t) 1, stack);
 
   // load the rom
   State8080_load_mem(state, 0x100, (size_t) 0x100 + bytesRead, buffer);

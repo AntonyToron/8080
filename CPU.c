@@ -132,7 +132,7 @@ static void UpdateCCSub(State8080_T state, uint16_t result, uint8_t lsb) {
   state->cc->ac = (lsb > 9);             // set ac if 4 bit carry
 }
 
-static void UpdateCCZeroSignParity(State8080_T state, uint16_t result, uint8_t lsb) {
+static void UpdateCCZeroSignParity(State8080_T state, uint8_t result, uint8_t lsb) {
   state->cc->z = ((result & 0xff) == 0);
   state->cc->s = ((result & 0x80) != 0);
   state->cc->p = Parity(result & 0xff);
@@ -146,13 +146,30 @@ static void PushPC(State8080_T state) {
   state->sp -= 2;
 }
 
+static void WRITE_MEM(State8080_T state, uint16_t address, uint8_t byte) {
+  state->memory[address] = byte;
+}
+
+static void WRITE_MEM_HL(State8080_T state, uint8_t byte) {
+  uint16_t offset = (state->registers[4]<<8) | (state->registers[5]);
+
+  state->memory[offset] = byte;
+}
+
+static uint8_t READ_MEM_HL(State8080_T state) {
+  uint16_t offset = (state->registers[4]<<8) | (state->registers[5]);
+
+  return state->memory[offset];
+}
+
 static uint8_t GetRegister(State8080_T state, uint8_t reg) {
   switch (reg) {
   case 0x06:
     {
       // H = high order bits, L = lower order bits, so shift H 8 bits up
-      uint16_t offset = (state->registers[4]<<8) | (state->registers[5] & 0xff);
-      return state->memory[offset]; break;
+      uint16_t offset = (state->registers[4]<<8) | (state->registers[5]);
+      return state->memory[offset];
+      break;
     }
   default:
     return state->registers[reg];
@@ -165,12 +182,10 @@ static void MOV (State8080_T state) {
   uint8_t source = (*opcode) & 0x07;
 
   if (dest == 6 && source != 6) {
-    uint16_t offset = (state->registers[4]<<8) | (state->registers[5] & 0xff);
-    state->memory[offset] = state->registers[source];
+    WRITE_MEM_HL(state, state->registers[source]);
   }
   else if (dest != 6 && source == 6) {
-    uint16_t offset = (state->registers[4]<<8) | (state->registers[5] & 0xff);
-    state->registers[dest] = state->memory[offset];
+    state->registers[dest] = READ_MEM_HL(state);
   }
   else {
     state->registers[dest] = state->registers[source];
@@ -182,8 +197,7 @@ static void MVI (State8080_T state) {
   uint8_t dest = ((*opcode) & 0x38)>>3;
 
   if (dest == 6) {
-    uint16_t offset = (state->registers[4]<<8) | (state->registers[5] & 0xff);
-    state->memory[offset] = opcode[1];
+    WRITE_MEM_HL(state, opcode[1]);
   }
   else {
     state->registers[dest] = opcode[1];
@@ -219,8 +233,8 @@ static void SUB_R (State8080_T state) {
   unsigned char *opcode = &state->memory[state->pc];
   uint8_t reg = (*opcode) & 0x07;
   uint8_t reg_value = GetRegister(state, reg);
-  uint16_t result = (uint16_t) state->registers[7] + (uint16_t) (reg_value ^ 0xff) + 1;
-  uint8_t lsb = (state->registers[7] & 0x0f) + ((reg_value & 0x0f) ^ 0x0f) + 1;
+  uint16_t result = (uint16_t) state->registers[7] - reg_value;
+  uint8_t lsb = (state->registers[7] & 0x0f) - (reg_value & 0x0f);
   
   UpdateCCSub(state, result, lsb);
   state->registers[7] = result & 0xff;              // update accumulator
@@ -231,8 +245,8 @@ static void SBB_R (State8080_T state) {
   unsigned char *opcode = &state->memory[state->pc];
   uint8_t reg = (*opcode) & 0x07;
   uint8_t reg_value = GetRegister(state, reg);
-  uint16_t result = (uint16_t) state->registers[7] + (uint16_t) (((reg_value + state->cc->c) ^ 0xff) + 1);
-  uint8_t lsb = (state->registers[7] & 0x0f) + (((reg_value + state->cc->c) ^ 0x0f) + 1);
+  uint16_t result = (uint16_t) state->registers[7] - (uint16_t) reg_value - (uint16_t) state->cc->c;
+  uint8_t lsb = (state->registers[7] & 0x0f) - ((reg_value + state->cc->c) & 0x0f);
   
   UpdateCCSub(state, result, lsb); 
   state->registers[7] = result & 0xff;              // update accumulator
@@ -245,8 +259,7 @@ static void ANA (State8080_T state) {
   uint8_t reg = (*opcode) & 0x07;
 
   if (reg == 6) {
-    uint16_t offset = (state->registers[4]<<8) | (state->registers[5] & 0xff);
-    result = state->registers[7] & state->memory[offset];
+    result = state->registers[7] & READ_MEM_HL(state);
     state->registers[7] = result;
   }
   else {
@@ -265,8 +278,7 @@ static void XRA (State8080_T state) {
   uint8_t reg = (*opcode) & 0x07;
 
   if (reg == 6) {
-    uint16_t offset = (state->registers[4]<<8) | (state->registers[5] & 0xff);
-    result = state->registers[7] ^ state->memory[offset];
+    result = state->registers[7] ^ READ_MEM_HL(state);
     state->registers[7] = result;
   }
   else {
@@ -286,8 +298,7 @@ static void ORA (State8080_T state) {
   uint8_t reg = (*opcode) & 0x07;
 
   if (reg == 6) {
-    uint16_t offset = (state->registers[4]<<8) | (state->registers[5] & 0xff);
-    result = state->registers[7] | state->memory[offset];
+    result = state->registers[7] | READ_MEM_HL(state);
     state->registers[7] = result;
   }
   else {
@@ -305,7 +316,7 @@ static void CMP (State8080_T state) {
   unsigned char *opcode = &state->memory[state->pc];
   uint8_t reg = ((*opcode) & 0x07);
   uint8_t reg_value = GetRegister(state, reg);
-  uint16_t result = (state->registers[7] - reg_value) & 0xffff;
+  uint16_t result = (state->registers[7] - reg_value);
   uint8_t lsb = (state->registers[7] & 0x0f) - (reg_value & 0x0f);
   
   UpdateCCAll(state, result, lsb);
@@ -326,7 +337,7 @@ static void INR_R (State8080_T state) {
   case 0x06:
     {
       // H = high order bits, L = lower order bits, so shift H 8 bits up
-      uint16_t offset = (state->registers[4]<<8) | (state->registers[5] & 0xff);
+      uint16_t offset = (state->registers[4]<<8) | (state->registers[5]);
       uint8_t lsb = (state->memory[offset] & 0x0f) + 1;
       state->memory[offset] = state->memory[offset] + 1;
       UpdateCCZeroSignParity(state, state->memory[offset], lsb);
@@ -351,7 +362,7 @@ static void DCR_R (State8080_T state) {
   case 0x06:
     {
       // H = high order bits, L = lower order bits, so shift H 8 bits up
-      uint16_t offset = (state->registers[4]<<8) | (state->registers[5] & 0xff);
+      uint16_t offset = (state->registers[4]<<8) | (state->registers[5]);
       uint8_t lsb = (state->memory[offset] & 0x0f) - 1;
       state->memory[offset] = state->memory[offset] - 1;
       UpdateCCZeroSignParity(state, state->memory[offset], lsb);
@@ -370,7 +381,7 @@ static void DCR_R (State8080_T state) {
 static void JMP_conditional (State8080_T state, uint8_t condition) {
    unsigned char *opcode = &state->memory[state->pc];
    if (condition) {
-     uint16_t addr = (opcode[2] << 8) | (opcode[1] & 0xff); // little-endian
+     uint16_t addr = (opcode[2] << 8) | (opcode[1]); // little-endian
      state->pc = addr;
    }
    else
@@ -380,7 +391,7 @@ static void JMP_conditional (State8080_T state, uint8_t condition) {
 static void RET_conditional (State8080_T state, uint8_t condition) {
   if (condition) {
     // PCL(low order bits) <- sp, PCH <- sp + 1, SP <- sp + 2
-    uint16_t updatedPC = (state->memory[state->sp + 1] << 8) | (state->memory[state->sp] & 0xff);
+    uint16_t updatedPC = (state->memory[state->sp + 1] << 8) | (state->memory[state->sp]);
     
     state->pc = updatedPC;
     state->sp += 2;
@@ -397,15 +408,10 @@ static void CALL_conditional (State8080_T state, uint8_t condition) {
   if (condition) {
     // (sp - 1) <- PCH, (sp - 2) <- PCL, SP -= 2, PC <- addr
     state->pc += 2; // for data bytes
-    /*
-    state->memory[state->sp - 1] = ((state->pc >> 8) & 0xff);
-    state->memory[state->sp - 2] = (uint8_t) (state->pc & 0xff);
-
-    state->sp -= 2;
-    */
+    
     PushPC(state);
     
-    state->pc = (opcode[2] << 8) | (opcode[1] & 0xff); // little-endian
+    state->pc = (opcode[2] << 8) | (opcode[1]); // little-endian
   }
   else
     state->pc += 2; // for data bytes
@@ -414,14 +420,7 @@ static void CALL_conditional (State8080_T state, uint8_t condition) {
 // similar to call, but calls interrupt code
 void RST(State8080_T state, uint8_t opcode) {  
   // push program counter
-  /*state->memory[state->sp - 1] = ((state->pc >> 8) & 0xff);
-  state->memory[state->sp - 2] = (uint8_t) (state->pc & 0xff);
-  
-  state->sp -= 2;
-  */
   PushPC(state);
-  if (flag)
-    printf ("performing reset\n");
 
   // 11AAA111 -> 00AAA000
   uint16_t addr = (opcode & 0x38) & 0xffff;
@@ -442,7 +441,7 @@ void Emulate8080Op(State8080_T state, unsigned char *opcode) {
   //if (state->pc == 0x0133) {
   //  printf ("Got to drawing");
   //}
-  // inx sp, dcx sp, cmp, not implemented
+  // inx sp, dcx sp, not implemented
   switch (*opcode) {
   case 0x00:               // NOP
     state->pc += 1;
@@ -556,7 +555,7 @@ void Emulate8080Op(State8080_T state, unsigned char *opcode) {
     // --------------------- STAX -----------------------------
   case 0x02:               // STAX B, store A indirect
     {
-      uint16_t BC = (state->registers[0]<<8) | (state->registers[1] & 0xff);
+      uint16_t BC = (state->registers[0]<<8) | (state->registers[1]);
 
       state->memory[BC] = state->registers[7];
     }
@@ -565,7 +564,7 @@ void Emulate8080Op(State8080_T state, unsigned char *opcode) {
     break;
   case 0x12:               // STAX D, store A indirect
     {
-      uint16_t DE = (state->registers[2]<<8) | (state->registers[3] & 0xff);
+      uint16_t DE = (state->registers[2]<<8) | (state->registers[3]);
 
       state->memory[DE] = state->registers[7];
     }
@@ -577,7 +576,7 @@ void Emulate8080Op(State8080_T state, unsigned char *opcode) {
 
   case 0x0A:               // LDAX B, load A indirect
     { // DEFINE SCOPE LOCAL TO SWITCH CASE
-      uint16_t BC = (state->registers[0]<<8) | (state->registers[1] & 0xff);
+      uint16_t BC = (state->registers[0]<<8) | (state->registers[1]);
 
       // value in memory at BC
       uint8_t mem = state->memory[BC];
@@ -589,7 +588,7 @@ void Emulate8080Op(State8080_T state, unsigned char *opcode) {
 
   case 0x1A:               // LDAX D, load A indirect
     {
-      uint16_t DE = (state->registers[2]<<8) | (state->registers[3] & 0xff);
+      uint16_t DE = (state->registers[2]<<8) | (state->registers[3]);
       
       // value in memory at DE
       uint8_t mem = state->memory[DE];
@@ -603,7 +602,7 @@ void Emulate8080Op(State8080_T state, unsigned char *opcode) {
 
   case 0x32:               // STA, store A direct
     {
-      uint16_t addr = (opcode[2]<<8) | (opcode[1] & 0xff);
+      uint16_t addr = (opcode[2]<<8) | (opcode[1]);
       
       state->memory[addr] = state->registers[7]; // store A at addr
       
@@ -616,7 +615,7 @@ void Emulate8080Op(State8080_T state, unsigned char *opcode) {
 
   case 0x3A:               // LDA, load A direct
     { // opcode[1] -> low_addr, opcode[2] -> high_addr
-      uint16_t addr = (opcode[2]<<8) | (opcode[1] & 0xff);
+      uint16_t addr = (opcode[2]<<8) | (opcode[1]);
       
       state->registers[7] = state->memory[addr]; // store value at addr into A
       
@@ -627,7 +626,7 @@ void Emulate8080Op(State8080_T state, unsigned char *opcode) {
 
   case 0x22:               // SHLD, store H&L direct
     {
-      uint16_t addr = (opcode[2]<<8) | (opcode[1] & 0xff); // little endian
+      uint16_t addr = (opcode[2]<<8) | (opcode[1]); // little endian
 
       // L stored at (HI, LOW)
       // H stored at next higher memory address
@@ -641,7 +640,7 @@ void Emulate8080Op(State8080_T state, unsigned char *opcode) {
     
   case 0x2A:               // LHLD, load H&L direct
     {
-      uint16_t addr = (opcode[2]<<8) | (opcode[1] & 0xff); // little endian
+      uint16_t addr = (opcode[2]<<8) | (opcode[1]); // little endian
 
       // L takes value stored at (HI, LOW)
       // H takes value stored at next higher memory address
@@ -791,11 +790,11 @@ void Emulate8080Op(State8080_T state, unsigned char *opcode) {
     state->pc += 1; // for op
 
     // (SP) <- (H) : (L)
-    state->sp = (state->registers[4] << 8) | (state->registers[5] & 0xff);
+    state->sp = (state->registers[4] << 8) | (state->registers[5]);
     break;
   case 0x31:              // LXI SP, load immediate stack pointer
     {
-      uint16_t addr = (opcode[2] << 8) | (opcode[1] & 0xff); // little-endian
+      uint16_t addr = (opcode[2] << 8) | (opcode[1]); // little-endian
       state->sp = addr;
     }
     state->pc += 2;
@@ -809,7 +808,7 @@ void Emulate8080Op(State8080_T state, unsigned char *opcode) {
       state->pc += 1; // for op
 
       // LITTLE ENDIAN
-      uint16_t addr = (opcode[2] << 8) | (opcode[1] & 0xff);
+      uint16_t addr = (opcode[2] << 8) | (opcode[1]);
       state->pc = addr;
     }
     break;
@@ -840,7 +839,7 @@ void Emulate8080Op(State8080_T state, unsigned char *opcode) {
   case 0xE9:              // PCHL, HL to program counter
     // PC <- HL
     {
-      uint16_t addr = (state->registers[4] << 8) | (state->registers[5] & 0xff);
+      uint16_t addr = (state->registers[4] << 8) | (state->registers[5]);
       state->pc = addr;
     }
     break;
@@ -849,18 +848,30 @@ void Emulate8080Op(State8080_T state, unsigned char *opcode) {
   case 0xCD:               // CALL, call unconditional
     // (SP - 1) <- PCH, (SP - 2) <- PCL, sp -= 2, PC <- addr
     // source = http://www.nj7p.org/Manuals/PDFs/Intel/9800153B.pdf
-    {
+#ifdef CPU_DIAGNOSTIC
+    if (((opcode[2] << 8) | (opcode[1] & 0xff)) == 5) {
+      if (state->registers[1] == 9) {
+	uint16_t offset = (state->registers[2] << 8) | (state->registers[3]);
+	char *str = &state->memory[offset + 3];
+	while (*str != '$')
+	  printf("%c", *str++);
+	printf("\n");
+      }
+      else if (state->registers[1] == 2) {
+	printf ("print char routine called\n");
+      }
+    }
+    else if (((opcode[2] << 8) | (opcode[1] & 0xff)) == 0) {
+      exit(0);
+    }
+    else
+#endif
+    { 
       // for op, and two data bytes, next instruction IMPORTANT
       state->pc += 3;
-      /*
-      state->memory[state->sp - 1] = (uint8_t) ((state->pc >> 8) & 0xff);
-      state->memory[state->sp - 2] = (uint8_t) (state->pc & 0x00ff);
-
-      state->sp -= 2;
-      */
       PushPC(state);
       
-      uint16_t addr = (opcode[2] << 8) | (opcode[1] & 0xff); // little-endian
+      uint16_t addr = (opcode[2] << 8) | (opcode[1]); // little-endian
       state->pc = addr;
     }
     break;
@@ -895,7 +906,7 @@ void Emulate8080Op(State8080_T state, unsigned char *opcode) {
   case 0xC9:               // RET, return
     // PCL(low order bits) <- sp, PCH <- sp + 1, SP <- sp + 2
     {
-      uint16_t updatedPC = (state->memory[state->sp + 1] << 8) | (state->memory[state->sp] & 0xff);
+      uint16_t updatedPC = (state->memory[state->sp + 1] << 8) | (state->memory[state->sp]);
       
       state->pc = updatedPC;
       state->sp += 2;
@@ -970,7 +981,7 @@ void Emulate8080Op(State8080_T state, unsigned char *opcode) {
     // ---------------------- INX -------------------------------
   case 0x03:               // INX B, increment BC
     {
-      uint16_t BC = (state->registers[0]<<8) | (state->registers[1] & 0xff);
+      uint16_t BC = (state->registers[0]<<8) | (state->registers[1]);
       
       uint16_t sum = BC + 1;
       // populate bc
@@ -982,7 +993,7 @@ void Emulate8080Op(State8080_T state, unsigned char *opcode) {
     break;
   case 0x13:               // INX D, increment DE
     {
-      uint16_t DE = (state->registers[2]<<8) | (state->registers[3] & 0xff);
+      uint16_t DE = (state->registers[2]<<8) | (state->registers[3]);
       
       uint16_t sum = DE + 1;
       // populate DE
@@ -994,7 +1005,7 @@ void Emulate8080Op(State8080_T state, unsigned char *opcode) {
     break;
   case 0x23:               // INX H, increment HL
     {
-      uint16_t HL = (state->registers[4]<<8) | (state->registers[5] & 0xff);
+      uint16_t HL = (state->registers[4]<<8) | (state->registers[5]);
       
       uint16_t sum = HL + 1;
       // populate HL
@@ -1008,7 +1019,7 @@ void Emulate8080Op(State8080_T state, unsigned char *opcode) {
     // ----------------------- DCX -----------------------------
   case 0x0B:               // DCX B, decrement BC
     {
-      uint16_t BC = (state->registers[0]<<8) | (state->registers[1] & 0xff);
+      uint16_t BC = (state->registers[0]<<8) | (state->registers[1]);
       
       uint16_t sum = BC - 1;
       // populate bc
@@ -1020,7 +1031,7 @@ void Emulate8080Op(State8080_T state, unsigned char *opcode) {
     break;
   case 0x1B:               // DCX D, decrement DE
     {
-      uint16_t DE = (state->registers[2]<<8) | (state->registers[3] & 0xff);
+      uint16_t DE = (state->registers[2]<<8) | (state->registers[3]);
       
       uint16_t sum = DE - 1;
       // populate de
@@ -1032,7 +1043,7 @@ void Emulate8080Op(State8080_T state, unsigned char *opcode) {
     break;
   case 0x2B:               // DCX H, decrement HL
     {
-      uint16_t HL = (state->registers[4]<<8) | (state->registers[5] & 0xff);
+      uint16_t HL = (state->registers[4]<<8) | (state->registers[5]);
       
       uint16_t sum = HL - 1;
       // populate hl
@@ -1099,13 +1110,13 @@ void Emulate8080Op(State8080_T state, unsigned char *opcode) {
     // ------------------------ DAD ---------------------------
   case 0x09:              // DAD B, BC + HL --> HL, updates only carry flag
     {
-      uint16_t BC = (state->registers[0]<<8) | (state->registers[1] & 0xff);
-      uint16_t HL = (state->registers[4]<<8) | (state->registers[5] & 0xff);
+      uint16_t BC = (state->registers[0]<<8) | (state->registers[1]);
+      uint16_t HL = (state->registers[4]<<8) | (state->registers[5]);
       
       uint32_t sum = BC + HL;
       // populate HL
-      state->registers[4] = (uint8_t) ((sum & 0x0000ffff)>>8);
-      state->registers[5] = (uint8_t) (sum & 0x000000ff);
+      state->registers[4] = (uint8_t) ((sum >> 8) & 0xff);
+      state->registers[5] = (uint8_t) (sum & 0xff);
       
       // update carry flag
       state->cc->c = (sum > 0xffff);
@@ -1114,14 +1125,14 @@ void Emulate8080Op(State8080_T state, unsigned char *opcode) {
     break;
   case 0x19:              // DAD D, DE + HL --> HL, updates only carry flag
     {
-      uint16_t DE = (state->registers[2]<<8) | (state->registers[3] & 0xff);
-      uint16_t HL = (state->registers[4]<<8) | (state->registers[5] & 0xff);
+      uint16_t DE = (state->registers[2]<<8) | (state->registers[3]);
+      uint16_t HL = (state->registers[4]<<8) | (state->registers[5]);
       
       uint32_t sum = DE + HL;
       
       // populate HL
-      state->registers[4] = (uint8_t) ((sum & 0x0000ffff)>>8);
-      state->registers[5] = (uint8_t) (sum & 0x000000ff);
+      state->registers[4] = (uint8_t) ((sum >> 8) & 0xff);
+      state->registers[5] = (uint8_t) (sum & 0xff);
       
       // update carry flag
       state->cc->c = (sum > 0xffff);
@@ -1130,13 +1141,13 @@ void Emulate8080Op(State8080_T state, unsigned char *opcode) {
     break;
   case 0x29:              // DAD H, HL + HL --> HL, updates only carry flag
     {
-      uint16_t HL = (state->registers[4]<<8) | (state->registers[5] & 0xff);
+      uint16_t HL = (state->registers[4]<<8) | (state->registers[5]);
       
       uint32_t sum = HL + HL;
 
       // populate HL
-      state->registers[4] = (uint8_t) ((sum & 0x0000ffff)>>8);
-      state->registers[5] = (uint8_t) (sum & 0x000000ff);
+      state->registers[4] = (uint8_t) ((sum >> 8) & 0xff);
+      state->registers[5] = (uint8_t) (sum & 0xff);
       
       // update carry flag
       state->cc->c = (sum > 0xffff);
@@ -1145,12 +1156,12 @@ void Emulate8080Op(State8080_T state, unsigned char *opcode) {
     break;
   case 0x39:              // DAD SP, SP + HL --> HL, updates only carry flag
     {
-      uint16_t HL = (state->registers[4]<<8) | (state->registers[5] & 0xff);
+      uint16_t HL = (state->registers[4]<<8) | (state->registers[5]);
       
       uint32_t sum = state->sp + HL;
       // populate HL
-      state->registers[4] = (uint8_t) ((sum & 0x0000ffff)>>8);
-      state->registers[5] = (uint8_t) (sum & 0x000000ff);
+      state->registers[4] = (uint8_t) ((sum >> 8) & 0xff);
+      state->registers[5] = (uint8_t) (sum & 0xff);
       
       // update carry flag
       state->cc->c = (sum > 0xffff);
@@ -1186,8 +1197,8 @@ void Emulate8080Op(State8080_T state, unsigned char *opcode) {
 
   case 0xD6:              // SUI, subtract immediate from A
     {
-      uint16_t result = (uint16_t) state->registers[7] + (uint16_t) ((opcode[1] ^ 0xff) + 1);
-      uint8_t lsb = (state->registers[7] & 0x0f) + (((opcode[1] & 0x0f) ^ 0x0f) + 1);
+      uint16_t result = (uint16_t) state->registers[7] - (uint16_t) opcode[1];
+      uint8_t lsb = (state->registers[7] & 0x0f) - (opcode[1] & 0x0f);
       
       UpdateCCSub(state, result, lsb);
       state->registers[7] = result & 0xff;
@@ -1198,9 +1209,8 @@ void Emulate8080Op(State8080_T state, unsigned char *opcode) {
 
   case 0xDE:              // SBI, subtract immediate from A with carry
     {
-      uint16_t result = (uint16_t) state->registers[7] + (uint16_t) (((opcode[1] + state->cc->c) ^ 0xff) + 1);
-      uint8_t lsb = (state->registers[7] & 0x0f) + ((((opcode[1] & 0x0f) + state->cc->c) ^ 0x0f) + 1);
-      
+      uint16_t result = (uint16_t) state->registers[7] - (uint16_t) opcode[1] - (uint16_t) state->cc->c;
+      uint8_t lsb = (state->registers[7] & 0x0f) - ((opcode[1] & 0x0f) + state->cc->c);
       
       UpdateCCSub(state, result, lsb);
       state->registers[7] = result & 0xff;
@@ -1314,7 +1324,7 @@ void Emulate8080Op(State8080_T state, unsigned char *opcode) {
   case 0xFE:              // CPI, compare immediate with A
     // condition bits set by (A) - Data
     {
-      uint16_t result = (state->registers[7] - opcode[1]) & 0xffff;
+      uint16_t result = ((uint16_t) state->registers[7] - (uint16_t) opcode[1]);
       uint8_t lsb = (state->registers[7] & 0x0f) - (opcode[1] & 0x0f);
       
       UpdateCCAll(state, result, lsb);
@@ -1611,8 +1621,8 @@ State8080_T State8080_init () {
 
   state->sp = 0;
   state->pc = 0;
-  state->memory = (uint8_t *) malloc (65535 * sizeof (uint8_t));
-  state->interrupts = (uint8_t *) malloc (sizeof(uint8_t));
+  state->memory = (uint8_t *) calloc (65535, sizeof (uint8_t));
+  state->interrupts = (uint8_t *) calloc (1, sizeof(uint8_t));
 
   state->cc = ConditionCodes_init();
   state->drivers = Drivers_init();
@@ -1632,7 +1642,7 @@ void State8080_free (State8080_T state) {
 }
 
 void State8080_load_mem(State8080_T state, int start, size_t end, unsigned char *buffer) {
-  for (int i = start; i < end || i < 8192; i++) {
+  for (int i = start; i < end && i < 8192; i++) {
     state->memory[i] = (uint8_t) *buffer;
     buffer++;
   }

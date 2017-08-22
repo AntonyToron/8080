@@ -325,7 +325,7 @@ void * processorThread(void *x) {
       // pause execution of instructions until a hardware interrupt should
       // happen
       std::unique_lock<std::mutex> lk(m);
-      cv.wait_for(lk, std::chrono::microseconds(16670), []{return hardware_interrupt;});
+      cv.wait_for(lk, std::chrono::microseconds(16670 / 2), []{return hardware_interrupt;}); // HAVE TO FIGURE OUT TIMING ON THIS, WHY DOES IT NEED TO BE / 2 AT THE MOMENT??
 
       // when unlocked, register the fact that we have recieved a hardware
       // interrupt
