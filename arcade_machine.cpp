@@ -187,10 +187,8 @@ void render() {
   // ADDS A LOCK ON RENDERING (THIS IS THE IDLE FUNC, SO IT LOCKS UP AND ONLY
   // RENDERS WHEN THE 60Hz WINDOW IS UP)
   std::unique_lock<std::mutex> lk(m2);
-  //cv.wait_for(lk, std::chrono::microseconds(16670), []{return hardware_interrupt;});
   auto now = std::chrono::system_clock::now();
   cv.wait_until(lk, now + std::chrono::milliseconds(16), [](){return hardware_interrupt;});
-  //usleep(16670);
 
   // RENDER SCREEN
   
@@ -267,7 +265,7 @@ void graphicsInterrupt(int value) {
     last_interrupt = 1;
   }
 
-    // NOTIFY PROCESSOR OF INTERRUPT
+  // NOTIFY PROCESSOR OF INTERRUPT
   hardware_interrupt = true;
   cv.notify_all(); // notify of hardware interrupt
 
@@ -300,17 +298,8 @@ void * graphicsThread(void *x) {
 void * hardwareThread(void *x) {
   printf ("Hello from hardware thread\n");
 
-  /*
-  struct sigaction act;
-  act.sa_handler = graphicsInterrupt;
-  sigaction (SIGALRM, & act, 0);
-  */
-
   // --------------- arcade specific --------------------- //
   // add timer for 1/60 seconds to process graphics, 16.67 milliseconds
-  //ualarm(16670, 16670); // 16.67 ms
-
-
   struct sigaction sa;
   struct itimerval timer;
 
@@ -347,13 +336,11 @@ void * processorThread(void *x) {
       // pause execution of instructions until a hardware interrupt should
       // happen
       auto now = std::chrono::system_clock::now();
-      //cv.wait(lock, [](){return hardware_interrupt;});
       cv.wait_until(lock, now + std::chrono::milliseconds(9), [](){return hardware_interrupt;}); // have to add some padding for inaccuracy in system time measurement (not waiting for exactly 16 milliseconds)
 
       // when unlocked, register the fact that we have recieved a hardware
       // interrupt
       hardware_interrupt = false; // reset
-      cv.notify_all();
       cyclesExecuted     = 0;     // reset cyclesExecuted (realize interrupt)
 
       // check if interrupts are enabled on the CPU, in which case an interrupt
