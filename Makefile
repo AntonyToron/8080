@@ -6,7 +6,7 @@
 # Macros
 CC = gcc
 CPP = g++
-CFLAGS = 
+#CFLAGS = 
 #CFLAGS = -g -D CPU_DIAGNOSTIC
 #CFLAGS = -D INSTRUCTION_DEBUGGING
 #CFLAGS = -pg

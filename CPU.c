@@ -163,17 +163,13 @@ static uint8_t READ_MEM_HL(State8080_T state) {
 }
 
 static uint8_t GetRegister(State8080_T state, uint8_t reg) {
-  switch (reg) {
-  case 0x06:
-    {
-      // H = high order bits, L = lower order bits, so shift H 8 bits up
-      uint16_t offset = (state->registers[4]<<8) | (state->registers[5]);
-      return state->memory[offset];
-      break;
-    }
-  default:
-    return state->registers[reg];
+  if (reg == 6) {
+    // H = high order bits, L = lower order bits, so shift H 8 bits up
+    uint16_t offset = (state->registers[4]<<8) | (state->registers[5]);
+    return state->memory[offset];
   }
+ else
+   return state->registers[reg];
 }
 
 static void MOV (State8080_T state) {

@@ -135,11 +135,54 @@ State8080_T INIT_STATE_invaders () {
   return state;
 }
 
+// ------------------------- BALLOON BOMBER STATE ------------------------
+
+void LOAD_ROM_ballbomb (State8080_T state) {
+  // load into memory
+  size_t r1, r2, r3, r4, r5, r6, r7;
+  unsigned char *tn01 = readFileIntoBuffer("tn01", &r1);
+  unsigned char *tn02 = readFileIntoBuffer("tn02", &r2);
+  unsigned char *tn03 = readFileIntoBuffer("tn03", &r3);
+  unsigned char *tn04 = readFileIntoBuffer("tn04", &r4);
+  unsigned char *tn05 = readFileIntoBuffer("tn05-1", &r5);
+  unsigned char *tn06 = readFileIntoBuffer("tn06", &r6);
+  unsigned char *tn07 = readFileIntoBuffer("tn07", &r7);
+
+  // load the rom
+  State8080_load_mem(state, 0x0000, r1, tn01);
+  State8080_load_mem(state, 0x0800, r2, tn02);
+  State8080_load_mem(state, 0x1000, r3, tn03);
+  State8080_load_mem(state, 0x1800, r4, tn04);
+  State8080_load_mem(state, 0x4000, r5, tn05);
+
+  // color mapping
+  //State8080_load_mem(state, 0x0000, r1, tn06);
+  //State8080_load_mem(state, 0x0000, r1, tn07);
+    
+  printf ("Successfully loaded ROM\n");
+  
+}
+
+State8080_T INIT_STATE_ballbomb () {
+  state = State8080_init ();
+
+  State8080_config_drivers_default(state, ArcadeDrivers());
+  
+  return state;
+}
+
+// -------------------------------------------------------------------
+
 void INITIALIZE_PROCESSOR(State8080_T state, char **argv) {
   if (strcmp(argv[1], "invaders") == 0) {
     state = INIT_STATE_invaders ();
 
     LOAD_ROM_invaders (state);                          
+  }
+  else if (strcmp(argv[1], "ballbomb") == 0) {
+    state = INIT_STATE_ballbomb ();
+
+    LOAD_ROM_ballbomb (state);
   }
   else {
     fprintf (stderr, "This ROM is not supported");
@@ -256,13 +299,15 @@ void processSpecialKeys(int key, int x, int y) {
 
 void graphicsInterrupt(int value) {
   // PUSH AN INTERRUPT
-  if (last_interrupt == 1) {
-    State8080_pushInterrupt(state, 2); // graphics interrupt
-    last_interrupt = 2;
-  }
-  else {
-    State8080_pushInterrupt(state, 1);
-    last_interrupt = 1;
+  if (!hardware_interrupt) {
+    if (last_interrupt == 1) {
+      State8080_pushInterrupt(state, 2); // graphics interrupt
+      last_interrupt = 2;
+    }
+    else {
+      State8080_pushInterrupt(state, 1);
+      last_interrupt = 1;
+    }
   }
 
   // NOTIFY PROCESSOR OF INTERRUPT
@@ -316,14 +361,13 @@ void * hardwareThread(void *x) {
   setitimer (ITIMER_REAL, &timer, NULL);
 }
 
-
-
 void * processorThread(void *x) {
   printf("hello from processor\n");
   fflush(stdout);
 
   long int cyclesExecuted = 0;
-
+  auto lastInt = std::chrono::system_clock::now();
+  
   while (CPU_on) {
     // lock thread if the amount of time to execute the cycles exceeds 60hz
     // this will essentially perform a batch delay, instead of delaying on
@@ -335,8 +379,21 @@ void * processorThread(void *x) {
       // when too many instructions happen before interrupt,
       // pause execution of instructions until a hardware interrupt should
       // happen
+
+      // by checking time individually on this thread, better accuracy in
+      // timing of the interrupt is achieved with the CPU instructions. The
+      // interrupting from the hardware thread acts as a good program duration
+      // timer for the GPU display and also to actually set and push interrupts
+      // for the CPU thread, if something goes out of sync, then this is an
+      // issue in the timing but not in the setup (the threads should be in
+      // sync).
       auto now = std::chrono::system_clock::now();
-      cv.wait_until(lock, now + std::chrono::milliseconds(9), [](){return hardware_interrupt;}); // have to add some padding for inaccuracy in system time measurement (not waiting for exactly 16 milliseconds)
+      auto difference = std::chrono::duration_cast<std::chrono::milliseconds>(now - lastInt);
+      auto waitTime = std::chrono::milliseconds(16) - difference;
+
+      // wait for corresponding time necessary before next interrupt
+      std::this_thread::sleep_until(now + waitTime);
+      lastInt = now;
 
       // when unlocked, register the fact that we have recieved a hardware
       // interrupt

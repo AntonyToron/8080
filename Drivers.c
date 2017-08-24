@@ -31,6 +31,10 @@ ArcadeMachinePorts_T am_ports_init () {
   return am_ports;
 }
 
+void am_ports_free (ArcadeMachinePorts_T am_ports) {
+  free(am_ports);
+}
+
 // -------------------- SHIFT REGISTER ----------------------
 
 // 8080 Arcade port 4: (Write), sets data in shift registers
@@ -56,7 +60,7 @@ void Arcade8080_write2 (uint8_t ac, ArcadeMachinePorts_T am_ports) {
 uint8_t Arcade8080_read3 (ArcadeMachinePorts_T am_ports) {
   uint8_t result;
 
-  result = ((am_ports->shift_registers[0] & 0xff) << am_ports->offset) | ((am_ports->shift_registers[1] & 0xff) >> am_ports->offset);
+  result = (am_ports->shift_registers[0] << am_ports->offset) | (am_ports->shift_registers[1] >> am_ports->offset);
   //printf ("Reading offset ");
   return result;
 }
