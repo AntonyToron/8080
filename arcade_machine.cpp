@@ -233,6 +233,9 @@ void render() {
   auto now = std::chrono::system_clock::now();
   cv.wait_until(lk, now + std::chrono::milliseconds(16), [](){return hardware_interrupt;});
 
+  // POPULATE WINDOW WITH IN-MEMORY VIDEO RAM, (effective 60hz draw)
+  populateWindowFromMemory();
+  
   // RENDER SCREEN
   
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -315,7 +318,7 @@ void graphicsInterrupt(int value) {
   cv.notify_all(); // notify of hardware interrupt
 
   // POPULATE WINDOW WITH IN-MEMORY VIDEO RAM, (effective 60hz draw)
-  populateWindowFromMemory();
+  //populateWindowFromMemory();
 }
 
 void graphicsInterruptCallback(int x) {
@@ -366,7 +369,9 @@ void * processorThread(void *x) {
   fflush(stdout);
 
   long int cyclesExecuted = 0;
-  auto lastInt = std::chrono::system_clock::now();
+  auto lastInt = std::chrono::high_resolution_clock::system_clock::now();
+  int last = 0;
+  int currentInterrupt = 0;
   
   while (CPU_on) {
     // lock thread if the amount of time to execute the cycles exceeds 60hz
@@ -386,14 +391,18 @@ void * processorThread(void *x) {
       // timer for the GPU display and also to actually set and push interrupts
       // for the CPU thread, if something goes out of sync, then this is an
       // issue in the timing but not in the setup (the threads should be in
-      // sync).
-      auto now = std::chrono::system_clock::now();
+      // sync). (can also sync by performing cv.wait_until, and use this
+      // waitTime calculated as well, should effectively behave the same way)
+      auto now = std::chrono::high_resolution_clock::system_clock::now();
       auto difference = std::chrono::duration_cast<std::chrono::milliseconds>(now - lastInt);
-      auto waitTime = std::chrono::milliseconds(16) - difference;
+      auto waitTime = std::chrono::milliseconds(20) - difference; // padding for inaccuracy (technically should be 16)
 
       // wait for corresponding time necessary before next interrupt
       std::this_thread::sleep_until(now + waitTime);
       lastInt = now;
+      //auto now = std::chrono::system_clock::now();
+      //cv.wait_until(lock, now + std::chrono::milliseconds(8), [](){return hardware_interrupt;});
+      //std::cout << "Slept for " << waitTime.count() << "ms" << std::endl;
 
       // when unlocked, register the fact that we have recieved a hardware
       // interrupt
@@ -403,7 +412,19 @@ void * processorThread(void *x) {
       // check if interrupts are enabled on the CPU, in which case an interrupt
       // should actually be performed
       if (State8080_ie(state)) {
-	unsigned char op = (State8080_popInterrupt(state) << 3) | 0xC7;
+	// this is for when the hardware thread and processor thread go out of
+	// sync. This will happen quite often but happens due to inaccuracies
+	// in timing between threads and execution times
+	currentInterrupt  = State8080_popInterrupt(state);
+	if (currentInterrupt == last) {
+	  if (currentInterrupt = 1)
+	    currentInterrupt = 2;
+	  else if (currentInterrupt = 2)
+	    currentInterrupt = 1;
+	}
+	last = currentInterrupt;
+	
+	unsigned char op = (currentInterrupt << 3) | 0xC7;
 	cyclesExecuted += 11;      // cycles for RST
 	Emulate8080Op(state, &op);
 	State8080_setIE(state, 0); // IE is set to 0 before interrupt exec
