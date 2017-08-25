@@ -18,6 +18,7 @@ struct ArcadeMachinePorts {
   uint8_t offset;
   uint8_t port0;
   uint8_t port1;
+  uint8_t port2;
   // fill in other necessary memory
 };
 
@@ -27,6 +28,10 @@ ArcadeMachinePorts_T am_ports_init () {
   am_ports->shift_registers[0] = 0;
   am_ports->shift_registers[1] = 0;
   am_ports->offset = 0;
+
+  am_ports->port0 = 0x0E;
+  am_ports->port1 = 0x08;
+  am_ports->port2 = 0x00;
   
   return am_ports;
 }
@@ -42,7 +47,6 @@ void am_ports_free (ArcadeMachinePorts_T am_ports) {
 void Arcade8080_write4 (uint8_t ac, ArcadeMachinePorts_T am_ports) {
   am_ports->shift_registers[1] = am_ports->shift_registers[0];
   am_ports->shift_registers[0] = ac;
-  //printf ("Using shift ");
 }
 
 // 8080 Arcade port 2: (Write), sets the shift amount, DOESNT RETURN IT
@@ -52,7 +56,6 @@ void Arcade8080_write4 (uint8_t ac, ArcadeMachinePorts_T am_ports) {
 // offset 7 : 8 bit result = xyyyyyyy
 void Arcade8080_write2 (uint8_t ac, ArcadeMachinePorts_T am_ports) {
   am_ports->offset = ac;
-  //printf ("Using offset ");
 }
 
 // 8080 Arcade port 3: (Read) // reads data based on shift
@@ -62,22 +65,55 @@ uint8_t Arcade8080_read3 (ArcadeMachinePorts_T am_ports) {
 
   result = (am_ports->shift_registers[0] << 8) | (am_ports->shift_registers[1]);
   result >>= (8 - am_ports->offset);
-  //result = (am_ports->shift_registers[0] >> (8 - am_ports->offset)) | (am_ports->shift_registers[1] >> (8 - am_ports->offset));
-  //printf ("Reading offset ");
-  return result;
+
+  return result & 0xff;
 }
 
-uint8_t Arcade8080_read0 (ArcadeMachinePorts_T am_ports) {
-  
-  return 0x0E;
+uint8_t Arcade8080_read0 (ArcadeMachinePorts_T am_ports) { 
+  return am_ports->port0;
 }
 
 uint8_t Arcade8080_read1 (ArcadeMachinePorts_T am_ports) {
-
-  return 0x08;
+  return am_ports->port1;
 }
 
 uint8_t Arcade8080_read2 (ArcadeMachinePorts_T am_ports) {
-  return 0x00;
+  return am_ports->port2;
 }
+
+// --------------------- AUXILIARY FUNCTIONS ------------------- //
+
+
+void INSERT_COIN (ArcadeMachinePorts_T am_ports) {
+  am_ports->port1 |= 0x01;
+}
+
+void P1_START (ArcadeMachinePorts_T am_ports) {
+  am_ports->port1 |= 0x04;
+}
+
+void P2_START (ArcadeMachinePorts_T am_ports) {
+  am_ports->port1 |= 0x02;
+}
+
+void P1_SHOT (ArcadeMachinePorts_T am_ports) {
+  am_ports->port1 |= 0x10;
+}
+
+void P1_LEFT_DOWN (ArcadeMachinePorts_T am_ports) {
+  am_ports->port1 |= 0x20;
+}
+
+void P1_RIGHT_DOWN (ArcadeMachinePorts_T am_ports) {
+  am_ports->port1 |= 0x40;
+}
+
+void P1_LEFT_UP (ArcadeMachinePorts_T am_ports) {
+  am_ports->port1 &= ~0x20;
+}
+
+void P1_RIGHT_UP (ArcadeMachinePorts_T am_ports) {
+  am_ports->port1 &= ~0x40;
+}
+
 

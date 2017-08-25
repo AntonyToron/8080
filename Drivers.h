@@ -23,3 +23,20 @@ uint8_t Arcade8080_read0 (ArcadeMachinePorts_T am_ports);
 uint8_t Arcade8080_read1 (ArcadeMachinePorts_T am_ports);
 
 uint8_t Arcade8080_read2 (ArcadeMachinePorts_T am_ports);
+
+
+void INSERT_COIN (ArcadeMachinePorts_T am_ports);
+
+void P1_START (ArcadeMachinePorts_T am_ports);
+
+void P2_START (ArcadeMachinePorts_T am_ports);
+
+void P1_SHOT (ArcadeMachinePorts_T am_ports);
+
+void P1_LEFT_DOWN (ArcadeMachinePorts_T am_ports);
+
+void P1_RIGHT_DOWN (ArcadeMachinePorts_T am_ports);
+
+void P1_LEFT_UP (ArcadeMachinePorts_T am_ports);
+
+void P1_RIGHT_UP (ArcadeMachinePorts_T am_ports);
