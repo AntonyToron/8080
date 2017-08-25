@@ -34,6 +34,12 @@ extern "C" {
 #include <GL/glut.h>
 #include <GLFW/glfw3.h>
 
+/*
+#define _GLFW_X11
+#define _GLFW_GLX
+#define _GLFW_USE_OPENGL
+#define _GLFW_HAS_GLXGETPROCADDRESS*/
+
 const int RGB_ON = 0xFFFFFFFF;
 const int RGB_OFF = 0x00000000;
 
@@ -335,6 +341,8 @@ void * graphicsThread(void *x) {
   while (!glfwWindowShouldClose(window)) {
     // render here
     render();
+
+    glfwGetTimerFrequency();
 
     glfwPollEvents();
   }
