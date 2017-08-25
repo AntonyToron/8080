@@ -87,17 +87,28 @@ uint8_t Arcade8080_read2 (ArcadeMachinePorts_T am_ports) {
 void INSERT_COIN (ArcadeMachinePorts_T am_ports) {
   am_ports->port1 |= 0x01;
 }
+void REGISTER_COIN (ArcadeMachinePorts_T am_ports) {
+  am_ports->port1 &= ~0x01;
+}
 
-void P1_START (ArcadeMachinePorts_T am_ports) {
+void P1_START_DOWN (ArcadeMachinePorts_T am_ports) {
   am_ports->port1 |= 0x04;
+}
+
+void P1_START_UP (ArcadeMachinePorts_T am_ports) {
+  am_ports->port1 &= ~0x04;
 }
 
 void P2_START (ArcadeMachinePorts_T am_ports) {
   am_ports->port1 |= 0x02;
 }
 
-void P1_SHOT (ArcadeMachinePorts_T am_ports) {
+void P1_SHOT_DOWN (ArcadeMachinePorts_T am_ports) {
   am_ports->port1 |= 0x10;
+}
+
+void P1_SHOT_UP (ArcadeMachinePorts_T am_ports) {
+  am_ports->port1 &= ~0x10;
 }
 
 void P1_LEFT_DOWN (ArcadeMachinePorts_T am_ports) {

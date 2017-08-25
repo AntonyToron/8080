@@ -32,6 +32,7 @@ extern "C" {
 #include <string.h>
 #include <thread>
 #include <GL/glut.h>
+#include <GLFW/glfw3.h>
 
 const int RGB_ON = 0xFFFFFFFF;
 const int RGB_OFF = 0x00000000;
@@ -51,6 +52,8 @@ uint8_t last_interrupt = 0;
 
 // DISPLAY
 unsigned char windowPixels[W * H * 4];
+
+GLFWwindow *window;
 
 
 std::mutex m;
@@ -185,7 +188,7 @@ void INITIALIZE_PROCESSOR(State8080_T state, char **argv) {
     LOAD_ROM_ballbomb (state);
   }
   else {
-    fprintf (stderr, "This ROM is not supported");
+    fprintf (stderr, "This ROM is not supported\n");
     exit(1);
   }
 }
@@ -245,60 +248,11 @@ void render() {
   
   glDrawPixels(W, H, GL_RGBA, GL_UNSIGNED_BYTE, windowPixels);
   
-  glutSwapBuffers();
+  glfwSwapBuffers(window);
   
 }
 
-void renderCallback(int x) {
-  render();
-}
 
-
-void changeSize(int w, int h) {
-  double x = w / W;
-  double y = h / H;
-  
-  
-  //glPixelZoom(x, y);   // MIRROR IMAGE
-  //glRasterPos2f(-1, 1); // IMPORTANT FOR STARTING AT 0, 0
-
-  CURRENT_WIDTH = w;
-  CURRENT_HEIGHT = h;
-  
-  
-}
-
-void processNormalKeys(unsigned char key, int x, int y) {
-  if (key == 27) {// escape
-    CPU_on = false; // turn off CPU
-    State8080_free(state);
-    exit(0);
-  }
-  else if (key == 'y') {
-    startPrintingOut();
-    f = 1;
-  }
-  // can config a, w, s, d too
-}
-
-void processSpecialKeys(int key, int x, int y) {
-  switch (key) {
-  case GLUT_KEY_LEFT:
-    printf ("Left");
-    break;
-  case GLUT_KEY_RIGHT:
-    printf ("Right");
-    break;
-  case GLUT_KEY_UP:
-    printf("Up");
-    break;
-  case GLUT_KEY_DOWN:
-    printf("Down");
-    break;
-  }
-
-  fflush(stdout);
-}
 
 void graphicsInterrupt(int value) {
   // PUSH AN INTERRUPT
@@ -321,26 +275,75 @@ void graphicsInterrupt(int value) {
   //populateWindowFromMemory();
 }
 
-void graphicsInterruptCallback(int x) {
-  graphicsInterrupt(0);
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+  // ------------------ GAME INIT -------------------- //
+  if (key == GLFW_KEY_C && action == GLFW_PRESS) {
+    INSERT_COIN (am_ports);
+  }
+  if (key == GLFW_KEY_C && action == GLFW_RELEASE) {
+    REGISTER_COIN (am_ports);
+  }
   
-  glutPostRedisplay();
+  if (key == GLFW_KEY_ENTER && action == GLFW_PRESS) {
+    P1_START_DOWN (am_ports);
+  }
+  if (key == GLFW_KEY_ENTER && action == GLFW_RELEASE) {
+    P1_START_UP (am_ports);
+  }
+
+  // ----------------- GAME CONTROLS ------------------ //
+  if (key == GLFW_KEY_SPACE && action == GLFW_PRESS) {
+    P1_SHOT_DOWN (am_ports);
+  }
+  if (key == GLFW_KEY_SPACE && action == GLFW_RELEASE) {
+    P1_SHOT_UP (am_ports);
+  }
+
+  // ----------------- MOVE CONTROLS ------------------ //
+  if (key == GLFW_KEY_LEFT && action == GLFW_PRESS) {
+    P1_LEFT_DOWN (am_ports);
+  }
+  if (key == GLFW_KEY_LEFT && action == GLFW_RELEASE) {
+    P1_LEFT_UP (am_ports);
+  }
+  if (key == GLFW_KEY_RIGHT && action == GLFW_PRESS) {
+    P1_RIGHT_DOWN (am_ports);
+  }
+  if (key == GLFW_KEY_RIGHT && action == GLFW_RELEASE) {
+    P1_RIGHT_UP (am_ports);
+  }
 }
 
 void * graphicsThread(void *x) {
   printf ("Hello from graphics thread\n");
-  
-  // register callbacks
-  glutDisplayFunc(render);
-  glutIdleFunc(render);
 
-  // external entries callbacks
-  glutKeyboardFunc (processNormalKeys);
-  glutSpecialFunc(processSpecialKeys);
+  if (!glfwInit())
+    exit(1);
 
-  // enter GLUT event processing cycle
-  glutMainLoop();
-  
+  // create windowed mode window and opengl context
+  window = glfwCreateWindow(448, 512, "Arcade Machine 8080", NULL, NULL);
+  if (!window) {
+    glfwTerminate();
+    exit(1);
+  }
+
+  // make the window's context current
+  glfwMakeContextCurrent(window);
+
+  glfwSetKeyCallback(window, key_callback);
+
+  while (!glfwWindowShouldClose(window)) {
+    // render here
+    render();
+
+    glfwPollEvents();
+  }
+
+  glfwTerminate();
+  State8080_free(state);
+  am_ports_free(am_ports);
+  exit(0);
+  return 0;
 }
 
 void * hardwareThread(void *x) {
@@ -439,30 +442,26 @@ void * processorThread(void *x) {
 }
 
 void INITIALIZE_GRAPHICS(int argc, char **argv) {
-  // init GLUT and create window
-  glutInit(&argc, argv);
+  // Initialize
+  if (!glfwInit())
+    exit(1);
 
-  glutInitWindowPosition(100, 100);
-  glutInitWindowSize(W * 2, H * 2);
-  glutInitDisplayMode(GLUT_RGBA | GLUT_SINGLE); // double?
-  glutCreateWindow("Arcade Machine 8080");
+  // create windowed mode window and opengl context
+  window = glfwCreateWindow(0, 0, "Arcade Machine 8080", NULL, NULL);
+  if (!window) {
+    glfwTerminate();
+    exit(1);
+  }
+
+  // make the window's context current
+  glfwMakeContextCurrent(window);
 }
 
 int main (int argc, char **argv) {
   INITIALIZE_PROCESSOR(state, argv);
-  INITIALIZE_GRAPHICS(argc, argv);
+  //INITIALIZE_GRAPHICS(argc, argv);
 
   CPU_on = true;
-  /*
-  std::thread graphics (graphicsThread, argc, argv); // graphics thread
-  std::thread cpu (processorThread); // processor thread
-  std::thread hardware (hardwareThread); // hardware thread
-
-  // synchronize threads
-  cpu.join();
-  graphics.join();  
-  hardware.join();
-  */
 
   pthread_t cpu, graphics, hardware;
   int x = 0, y = 0, z = 0;
@@ -470,24 +469,6 @@ int main (int argc, char **argv) {
   pthread_create(&cpu, NULL, processorThread, &x);
   pthread_create(&graphics, NULL, graphicsThread, &y);
   pthread_create(&hardware, NULL, hardwareThread, &z);
-
-  /*
-  pthread_attr_t thAttr;
-  int policy = 0;
-  int min_prio_for_policy = 0;
-
-  pthread_attr_init(&thAttr);
-  pthread_attr_getschedpolicy(&thAttr, &policy);
-  min_prio_for_policy = sched_get_priority_min(policy);
-
-  pthread_setschedprio(graphics, min_prio_for_policy);
-  pthread_attr_destroy(&thAttr);
-  */
-  /*
-  struct sched_param p;
-  p.sched_priority = 0;
-  sched_setscheduler(graphics, SCHED_IDLE, &p);
-  */
 
   pthread_join(cpu, NULL);
   pthread_join(graphics, NULL);
