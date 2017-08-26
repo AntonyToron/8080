@@ -32,7 +32,7 @@ extern "C" {
 
 #include <string.h>
 #include <thread>
-#include <GL/glut.h>
+//#include <GL/glut.h>
 #include <GLFW/glfw3.h>
 
 const int RGB_ON = 0xFFFFFFFF;

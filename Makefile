@@ -15,7 +15,7 @@ CFLAGS =
 # CFLAGS = -D NDEBUG
 # CFLAGS = -D NDEBUG -O
 CPPFLAGS = -std=c++11
-
+# -lGLEW -lglut-lGLEW -lglut
 LIBS = -lglfw3 -lm -lGL -lGLEW -lglut -lGLU -lpthread -lX11 -lXxf86vm -lXrandr -lXi -ldl -lXinerama -lXcursor -lSDL2 -lSDL2_mixer
 
 # Pattern rule, any .o file with .c file of same name will assume it
