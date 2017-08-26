@@ -275,19 +275,38 @@ void playSoundEffects() {
     if ((port3_current & 0x02) && !(port3_previous & 0x02)) {
       playSoundEffect("shot");
     }
-    if ((port3_current & 0x08) && !(port3_previous & 0x08)) {
-      playSoundEffect("invaderkilled");
-    }
     if ((port3_current & 0x04) && !(port3_previous & 0x04)) {
       playSoundEffect("flash");
     }
-    // if ((port3_current & 0x08) && !(port3_previous & 0x08)) {
-    //   playSoundEffect("invaderkilled.wav");
-    // }
+    if ((port3_current & 0x08) && !(port3_previous & 0x08)) {
+      playSoundEffect("invaderkilled");
+    }
+
+    // UFO, repeats
+    if ((port3_current & 0x01) && !(port3_previous & 0x01)) {
+      playSoundEffect("UFO_on");
+    }
+    if (!(port3_current & 0x01) && (port3_previous & 0x01)) {
+      playSoundEffect("UFO_off");
+    }
     
   }
   if (port5_current != port5_previous) {
-
+    if ((port5_current & 0x01) && !(port5_previous & 0x02)) {
+      playSoundEffect("mov1");
+    }
+    if ((port5_current & 0x02) && !(port5_previous & 0x02)) {
+      playSoundEffect("mov2");
+    }
+    if ((port5_current & 0x04) && !(port5_previous & 0x04)) {
+      playSoundEffect("mov3");
+    }
+    if ((port5_current & 0x08) && !(port5_previous & 0x08)) {
+      playSoundEffect("mov4");
+    }
+    if ((port5_current & 0x10) && !(port5_previous & 0x10)) {
+      playSoundEffect("UFO_hit");
+    }
   }
   
   port3_previous = port3_current;
@@ -379,7 +398,7 @@ void * graphicsThread(void *x) {
 
   glfwSetKeyCallback(window, key_callback);
 
-  while (!glfwWindowShouldClose(window)) {
+  while (!glfwWindowShouldClose(window)) {  
     // render here
     render();
 
