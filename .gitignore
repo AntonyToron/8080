@@ -8,3 +8,9 @@ out
 
 ./debug/*
 ./notes/*
+
+/debug/*
+/notes/*
+
+debug/*
+notes/*
