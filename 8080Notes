@@ -37,3 +37,14 @@ The startup of th code jumps to a part and starts loading stuff onto the video
 memory from some other place in memory. We notice that some of the data is
 from the ROM itself. this means that data is interleaved with code
 
+
+
+// GLFW
+to install:
+
+clone the repo
+go into the repo
+make
+sudo make install // this will install the library into your includes folder
+add -lglfw3 as a dependency in the Makefile so that it knows to look for that
+in the includes folder

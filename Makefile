@@ -16,7 +16,7 @@ CPP = g++
 # CFLAGS = -D NDEBUG -O
 CPPFLAGS = -std=c++11
 
-LIBS = -lglfw -lm -lGL -lGLEW -lglut -lGLU -lpthread -lX11 -lXxf86vm -lXrandr -lXi -ldl -lXinerama -lXcursor 
+LIBS = -lglfw3 -lm -lGL -lGLEW -lglut -lGLU -lpthread -lX11 -lXxf86vm -lXrandr -lXi -ldl -lXinerama -lXcursor 
 
 # Pattern rule, any .o file with .c file of same name will assume it
 # %.o: %.c

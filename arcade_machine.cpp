@@ -18,6 +18,7 @@
 #include <condition_variable>
 #include <pthread.h>
 #include <sys/time.h>
+#include <iomanip>
 
 extern "C" {
   #include "CPU.h"
@@ -33,12 +34,6 @@ extern "C" {
 #include <thread>
 #include <GL/glut.h>
 #include <GLFW/glfw3.h>
-
-/*
-#define _GLFW_X11
-#define _GLFW_GLX
-#define _GLFW_USE_OPENGL
-#define _GLFW_HAS_GLXGETPROCADDRESS*/
 
 const int RGB_ON = 0xFFFFFFFF;
 const int RGB_OFF = 0x00000000;
@@ -241,6 +236,7 @@ void render() {
   std::unique_lock<std::mutex> lk(m2);
   auto now = std::chrono::system_clock::now();
   cv.wait_until(lk, now + std::chrono::milliseconds(16), [](){return hardware_interrupt;});
+  //cv.wait(lk, [](){return hardware_interrupt;});
 
   // POPULATE WINDOW WITH IN-MEMORY VIDEO RAM, (effective 60hz draw)
   populateWindowFromMemory();
@@ -258,9 +254,14 @@ void render() {
   
 }
 
-
+auto t1 = std::chrono::high_resolution_clock::now();
 
 void graphicsInterrupt(int value) {
+  //auto t2 = std::chrono::high_resolution_clock::now();
+  //std::cout << "Took : " << std::chrono::duration_cast<std::chrono::milliseconds>(t2-t1).count() << " ms\n";
+  //t1 = t2;
+  
+  
   // PUSH AN INTERRUPT
   if (!hardware_interrupt) {
     if (last_interrupt == 1) {
@@ -342,7 +343,7 @@ void * graphicsThread(void *x) {
     // render here
     render();
 
-    glfwGetTimerFrequency();
+    
 
     glfwPollEvents();
   }
@@ -370,7 +371,7 @@ void * hardwareThread(void *x) {
   timer.it_value.tv_usec = 16000;
 
   timer.it_interval.tv_sec = 0;
-  timer.it_interval.tv_usec = 16000;
+  timer.it_interval.tv_usec = 8000; // more frequent (padding for inaccuracy)
 
   setitimer (ITIMER_REAL, &timer, NULL);
 }
@@ -404,15 +405,15 @@ void * processorThread(void *x) {
       // issue in the timing but not in the setup (the threads should be in
       // sync). (can also sync by performing cv.wait_until, and use this
       // waitTime calculated as well, should effectively behave the same way)
-      auto now = std::chrono::high_resolution_clock::system_clock::now();
+      /*auto now = std::chrono::high_resolution_clock::system_clock::now();
       auto difference = std::chrono::duration_cast<std::chrono::milliseconds>(now - lastInt);
       auto waitTime = std::chrono::milliseconds(20) - difference; // padding for inaccuracy (technically should be 16)
 
       // wait for corresponding time necessary before next interrupt
       std::this_thread::sleep_until(now + waitTime);
-      lastInt = now;
-      //auto now = std::chrono::system_clock::now();
-      //cv.wait_until(lock, now + std::chrono::milliseconds(8), [](){return hardware_interrupt;});
+      lastInt = now;*/
+      auto now = std::chrono::system_clock::now();
+      cv.wait(lock, [](){return hardware_interrupt;});
       //std::cout << "Slept for " << waitTime.count() << "ms" << std::endl;
 
       // when unlocked, register the fact that we have recieved a hardware
