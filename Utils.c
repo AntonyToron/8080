@@ -56,9 +56,9 @@ static void INIT_SDL () {
 }
 
 static void LOAD_WAVS () {
-  shot = Mix_LoadWAV("3.wav");
-  invaderKilled = Mix_LoadWAV("1.wav");
-  flash = Mix_LoadWAV("2.wav");
+  shot = Mix_LoadWAV("./sound/3.wav");
+  invaderKilled = Mix_LoadWAV("./sound/1.wav");
+  flash = Mix_LoadWAV("./sound/2.wav");
 
   if ((shot == NULL) || (invaderKilled == NULL) || (flash == NULL)) {
     printf ("Error in loading wavs\n");

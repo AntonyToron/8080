@@ -5,3 +5,6 @@ out
 ./output
 ./debugoutput
 ./out
+
+./debug/*
+./notes/*

@@ -156,13 +156,13 @@ State8080_T INIT_STATE_invaders () {
 void LOAD_ROM_ballbomb (State8080_T state) {
   // load into memory
   size_t r1, r2, r3, r4, r5, r6, r7;
-  unsigned char *tn01 = readFileIntoBuffer("tn01", &r1);
-  unsigned char *tn02 = readFileIntoBuffer("tn02", &r2);
-  unsigned char *tn03 = readFileIntoBuffer("tn03", &r3);
-  unsigned char *tn04 = readFileIntoBuffer("tn04", &r4);
-  unsigned char *tn05 = readFileIntoBuffer("tn05-1", &r5);
-  unsigned char *tn06 = readFileIntoBuffer("tn06", &r6);
-  unsigned char *tn07 = readFileIntoBuffer("tn07", &r7);
+  unsigned char *tn01 = readFileIntoBuffer("./ROMS/tn01", &r1);
+  unsigned char *tn02 = readFileIntoBuffer("./ROMS/tn02", &r2);
+  unsigned char *tn03 = readFileIntoBuffer("./ROMS/tn03", &r3);
+  unsigned char *tn04 = readFileIntoBuffer("./ROMS/tn04", &r4);
+  unsigned char *tn05 = readFileIntoBuffer("./ROMS/tn05-1", &r5);
+  unsigned char *tn06 = readFileIntoBuffer("./ROMS/tn06", &r6);
+  unsigned char *tn07 = readFileIntoBuffer("./ROMS/tn07", &r7);
 
   // load the rom
   State8080_load_mem(state, 0x0000, r1, tn01);
