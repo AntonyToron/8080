@@ -6,3 +6,7 @@ libglew-dev
 freeglut3
 freeglut3-dev
 libglm-dev
+libgtk2.0-dev OR libgtk-3-dev
+libwxgtk3.0-dev
+
+# need wxwidgets too, but that is installed manually, as is glfw

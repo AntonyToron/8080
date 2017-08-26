@@ -17,13 +17,16 @@ CFLAGS =
 CPPFLAGS = -std=c++11
 # -lGLEW -lglut-lGLEW -lglut
 LIBS = -lglfw3 -lm -lGL -lGLEW -lglut -lGLU -lpthread -lX11 -lXxf86vm -lXrandr -lXi -ldl -lXinerama -lXcursor -lSDL2 -lSDL2_mixer
+WX_LIBS = $(shell wx-config --libs)
+WX_FLAGS = $(shell wx-config --cxxflags)
+#LIBS += $(WX_LIBS)
 
 # Pattern rule, any .o file with .c file of same name will assume it
 # %.o: %.c
 #       $ (CC) $ (CFLAGS) -c $<
 
 # Dependency rules for non-file targets
-all: disassemble c_arcade arcade playground test
+all: disassemble c_arcade arcade playground test 8080_EMU
 
 # clean directory
 clobber: clean
@@ -46,6 +49,9 @@ playground: playground.o
 arcade: arcade_machine.o CPU.o Utils.o Drivers.o
 	$(CPP) $(CFLAGS) $< CPU.o Utils.o Drivers.o -o $@ $(LIBS)
 
+8080_EMU: emulator.o
+	$(CPP) $(CFLAGS) $(WX_FLAGS) $< -o $@ $(WX_LIBS)
+
 
 # object file dependencies in recipes for all binary files
 8080Arcade.o: 8080Arcade.c CPU.h Utils.h Drivers.h
@@ -64,6 +70,9 @@ playground.o: playground.cpp
 	$(CPP) $(CFLAGS) -c $< $(LIBS)
 arcade_machine.o: arcade_machine.cpp
 	$(CPP) $(CPPFLAGS) -c $< $(LIBS)
+
+emulator.o: emulator.cpp
+	$(CPP) $(CPPFLAGS) $(WX_FLAGS) -c $< $(WX_LIBS)
 
 
 disassemble.o: disassemble.c disassembler.h
