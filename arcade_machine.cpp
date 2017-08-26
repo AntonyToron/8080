@@ -231,12 +231,10 @@ void populateWindowFromMemory() {
 }
 
 void render() {
-  // ADDS A LOCK ON RENDERING (THIS IS THE IDLE FUNC, SO IT LOCKS UP AND ONLY
-  // RENDERS WHEN THE 60Hz WINDOW IS UP)
+  // ADDS A LOCK ON RENDERING
   std::unique_lock<std::mutex> lk(m2);
   auto now = std::chrono::system_clock::now();
   cv.wait_until(lk, now + std::chrono::milliseconds(16), [](){return hardware_interrupt;});
-  //cv.wait(lk, [](){return hardware_interrupt;});
 
   // POPULATE WINDOW WITH IN-MEMORY VIDEO RAM, (effective 60hz draw)
   populateWindowFromMemory();
@@ -251,16 +249,18 @@ void render() {
   glDrawPixels(W, H, GL_RGBA, GL_UNSIGNED_BYTE, windowPixels);
   
   glfwSwapBuffers(window);
-  
 }
 
+#ifdef INTERRUPT_TIMING
 auto t1 = std::chrono::high_resolution_clock::now();
+#endif
 
 void graphicsInterrupt(int value) {
-  //auto t2 = std::chrono::high_resolution_clock::now();
-  //std::cout << "Took : " << std::chrono::duration_cast<std::chrono::milliseconds>(t2-t1).count() << " ms\n";
-  //t1 = t2;
-  
+  #ifdef INTERRUPT_TIMING
+  auto t2 = std::chrono::high_resolution_clock::now();
+  std::cout << "Took : " << std::chrono::duration_cast<std::chrono::milliseconds>(t2-t1).count() << " ms\n";
+  t1 = t2;
+  #endif
   
   // PUSH AN INTERRUPT
   if (!hardware_interrupt) {
@@ -277,9 +277,6 @@ void graphicsInterrupt(int value) {
   // NOTIFY PROCESSOR OF INTERRUPT
   hardware_interrupt = true;
   cv.notify_all(); // notify of hardware interrupt
-
-  // POPULATE WINDOW WITH IN-MEMORY VIDEO RAM, (effective 60hz draw)
-  //populateWindowFromMemory();
 }
 
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
@@ -343,8 +340,6 @@ void * graphicsThread(void *x) {
     // render here
     render();
 
-    
-
     glfwPollEvents();
   }
 
@@ -365,13 +360,28 @@ void * hardwareThread(void *x) {
 
   memset (&sa, 0, sizeof (sa));
   sa.sa_handler = &graphicsInterrupt;
-  sigaction (SIGALRM, &sa, NULL); // COULD BE SIGVTALARM and be virtaul time
+  sigaction (SIGALRM, &sa, NULL); // COULD BE SIGVTALARM and be virtual time
 
   timer.it_value.tv_sec = 0;
   timer.it_value.tv_usec = 16000;
 
   timer.it_interval.tv_sec = 0;
-  timer.it_interval.tv_usec = 8000; // more frequent (padding for inaccuracy)
+  /*
+    The following interval should be 16670 ns, or 16.67 ms.
+
+    Experimentation with timing suggested that the amount of instructions
+    before an interrupt was not slowing down the system, but the actual
+    interval between interrupts was. An interrupt being executed faster than
+    at 1/60 s (approximately twice as fast), added an appropriate amount of
+    speedup for the system to run at approximately the speed as original
+    8080 CPU.
+    
+    This could likely be due to system time in processing on threads, or a
+    factor of 2 missing elsewhere in calculations that could cause this halving
+    to produce close to correct results.
+
+   */
+  timer.it_interval.tv_usec = 8000;
 
   setitimer (ITIMER_REAL, &timer, NULL);
 }
@@ -381,7 +391,6 @@ void * processorThread(void *x) {
   fflush(stdout);
 
   long int cyclesExecuted = 0;
-  auto lastInt = std::chrono::high_resolution_clock::system_clock::now();
   int last = 0;
   int currentInterrupt = 0;
   
@@ -397,24 +406,7 @@ void * processorThread(void *x) {
       // pause execution of instructions until a hardware interrupt should
       // happen
 
-      // by checking time individually on this thread, better accuracy in
-      // timing of the interrupt is achieved with the CPU instructions. The
-      // interrupting from the hardware thread acts as a good program duration
-      // timer for the GPU display and also to actually set and push interrupts
-      // for the CPU thread, if something goes out of sync, then this is an
-      // issue in the timing but not in the setup (the threads should be in
-      // sync). (can also sync by performing cv.wait_until, and use this
-      // waitTime calculated as well, should effectively behave the same way)
-      /*auto now = std::chrono::high_resolution_clock::system_clock::now();
-      auto difference = std::chrono::duration_cast<std::chrono::milliseconds>(now - lastInt);
-      auto waitTime = std::chrono::milliseconds(20) - difference; // padding for inaccuracy (technically should be 16)
-
-      // wait for corresponding time necessary before next interrupt
-      std::this_thread::sleep_until(now + waitTime);
-      lastInt = now;*/
-      auto now = std::chrono::system_clock::now();
       cv.wait(lock, [](){return hardware_interrupt;});
-      //std::cout << "Slept for " << waitTime.count() << "ms" << std::endl;
 
       // when unlocked, register the fact that we have recieved a hardware
       // interrupt
@@ -450,25 +442,8 @@ void * processorThread(void *x) {
   } 
 }
 
-void INITIALIZE_GRAPHICS(int argc, char **argv) {
-  // Initialize
-  if (!glfwInit())
-    exit(1);
-
-  // create windowed mode window and opengl context
-  window = glfwCreateWindow(0, 0, "Arcade Machine 8080", NULL, NULL);
-  if (!window) {
-    glfwTerminate();
-    exit(1);
-  }
-
-  // make the window's context current
-  glfwMakeContextCurrent(window);
-}
-
 int main (int argc, char **argv) {
   INITIALIZE_PROCESSOR(state, argv);
-  //INITIALIZE_GRAPHICS(argc, argv);
 
   CPU_on = true;
 
