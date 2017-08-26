@@ -18,6 +18,10 @@ void Arcade8080_write4 (uint8_t ac, ArcadeMachinePorts_T am_ports);
 
 void Arcade8080_write2 (uint8_t ac, ArcadeMachinePorts_T am_ports);
 
+void Arcade8080_write3 (uint8_t ac, ArcadeMachinePorts_T am_ports);
+
+void Arcade8080_write5 (uint8_t ac, ArcadeMachinePorts_T am_ports);
+
 uint8_t Arcade8080_read3 (ArcadeMachinePorts_T am_ports);
 
 uint8_t Arcade8080_read0 (ArcadeMachinePorts_T am_ports);
@@ -48,3 +52,9 @@ void P1_RIGHT_DOWN (ArcadeMachinePorts_T am_ports);
 void P1_LEFT_UP (ArcadeMachinePorts_T am_ports);
 
 void P1_RIGHT_UP (ArcadeMachinePorts_T am_ports);
+
+
+uint8_t am_ports_get3(ArcadeMachinePorts_T am_ports);
+
+uint8_t am_ports_get5(ArcadeMachinePorts_T am_ports);
+

@@ -19,6 +19,8 @@ struct ArcadeMachinePorts {
   uint8_t port0;
   uint8_t port1;
   uint8_t port2;
+  uint8_t port3;
+  uint8_t port5;
   // fill in other necessary memory
 };
 
@@ -32,6 +34,8 @@ ArcadeMachinePorts_T am_ports_init () {
   am_ports->port0 = 0x0E;
   am_ports->port1 = 0x08;
   am_ports->port2 = 0x00;
+  am_ports->port3 = 0x00;
+  am_ports->port5 = 0x00;
   
   return am_ports;
 }
@@ -81,6 +85,35 @@ uint8_t Arcade8080_read2 (ArcadeMachinePorts_T am_ports) {
   return am_ports->port2;
 }
 
+void Arcade8080_write3 (uint8_t ac, ArcadeMachinePorts_T am_ports) {
+  /*
+    bits:
+    0 = SX0 0.raw // sound (loop, play until goes to 0)
+    1 = SX1 1.raw // sound
+    2 = SX2 2.raw // sound
+    3 = SX3 3.raw // sound
+    4 = SX4       // extended play
+    5 = SX5       // AMP enable
+    
+   */
+  
+  am_ports->port3 = ac;
+}
+
+void Arcade8080_write5 (uint8_t ac, ArcadeMachinePorts_T am_ports) {
+  /*
+    bits:
+    0 = SX6  4.raw // sound
+    1 = SX7  5.raw // sound
+    2 = SX8  6.raw // sound
+    3 = SX9  7.raw // sound
+    4 = SX10 8.raw // sound
+   
+   */
+
+  am_ports->port5 = ac;
+}
+
 // --------------------- AUXILIARY FUNCTIONS ------------------- //
 
 
@@ -125,6 +158,14 @@ void P1_LEFT_UP (ArcadeMachinePorts_T am_ports) {
 
 void P1_RIGHT_UP (ArcadeMachinePorts_T am_ports) {
   am_ports->port1 &= ~0x40;
+}
+
+uint8_t am_ports_get3(ArcadeMachinePorts_T am_ports) {
+  return am_ports->port3;
+}
+
+uint8_t am_ports_get5(ArcadeMachinePorts_T am_ports) {
+  return am_ports->port5;
 }
 
 

@@ -6,7 +6,7 @@
 # Macros
 CC = gcc
 CPP = g++
-#CFLAGS = 
+CFLAGS = 
 #CFLAGS = -g -D CPU_DIAGNOSTIC
 #CFLAGS = -D INSTRUCTION_DEBUGGING
 #CFLAGS = -pg
@@ -16,7 +16,7 @@ CPP = g++
 # CFLAGS = -D NDEBUG -O
 CPPFLAGS = -std=c++11
 
-LIBS = -lglfw3 -lm -lGL -lGLEW -lglut -lGLU -lpthread -lX11 -lXxf86vm -lXrandr -lXi -ldl -lXinerama -lXcursor 
+LIBS = -lglfw3 -lm -lGL -lGLEW -lglut -lGLU -lpthread -lX11 -lXxf86vm -lXrandr -lXi -ldl -lXinerama -lXcursor -lSDL2 -lSDL2_mixer
 
 # Pattern rule, any .o file with .c file of same name will assume it
 # %.o: %.c
@@ -34,12 +34,12 @@ clean:
 # Dependency rules for file targets
 # include all files ncessary for building in -o shortcut case
 c_arcade: 8080Arcade.o CPU.o Utils.o Drivers.o
-	$(CC) $(CFLAGS) $< CPU.o Utils.o Drivers.o -o $@
+	$(CC) $(CFLAGS) $< CPU.o Utils.o Drivers.o -o $@ $(LIBS)
 disassemble: disassemble.o disassembler.o
 	$(CC) $(CFLAGS) $< disassembler.o -o $@
 
 test: cpu_test.o CPU.o Utils.o Drivers.o
-	$(CC) $(CFLAGS) -g $< CPU.o Utils.o Drivers.o -o $@
+	$(CC) $(CFLAGS) -g $< CPU.o Utils.o Drivers.o -o $@ $(LIBS)
 
 playground: playground.o
 	$(CPP) $(CFLAGS) $< -o $@ $(LIBS)

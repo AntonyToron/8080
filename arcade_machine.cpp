@@ -85,6 +85,14 @@ void ArcadeOut2 (uint8_t ac) {
   Arcade8080_write2 (ac, am_ports);
 }
 
+void ArcadeOut3 (uint8_t ac) {
+  Arcade8080_write3(ac, am_ports);
+}
+
+void ArcadeOut5 (uint8_t ac) {
+  Arcade8080_write5(ac, am_ports);
+}
+
 uint8_t ArcadeRead3 () {
   return Arcade8080_read3(am_ports);
 }
@@ -105,14 +113,18 @@ Drivers_T ArcadeDrivers() {
   Drivers_T drivers = Drivers_init();
   am_ports = am_ports_init();
 
-  // shift registers
-  config_drivers_out_port(drivers, &ArcadeOut4, 4);
+  // OUT
+  config_drivers_out_port(drivers, &ArcadeOut4, 4); // shift registers
   config_drivers_out_port(drivers, &ArcadeOut2, 2);
+  config_drivers_out_port(drivers, &ArcadeOut3, 3); // sound
+  config_drivers_out_port(drivers, &ArcadeOut5, 5);
+
+  // IN
   config_drivers_in_port(drivers, &ArcadeRead3, 3);
   config_drivers_in_port(drivers, &ArcadeRead0, 0);
   config_drivers_in_port(drivers, &ArcadeRead1, 1);
   config_drivers_in_port(drivers, &ArcadeRead2, 2);
-  
+   
   return drivers;
 }
 
@@ -251,6 +263,37 @@ void render() {
   glfwSwapBuffers(window);
 }
 
+uint8_t port3_previous = 0x00;
+uint8_t port5_previous = 0x00;
+
+void playSoundEffects() {
+  // check ports 3 and 5 for sound
+  uint8_t port3_current = am_ports_get3(am_ports);
+  uint8_t port5_current = am_ports_get5(am_ports);
+
+  if (port3_current != port3_previous) {
+    if ((port3_current & 0x02) && !(port3_previous & 0x02)) {
+      playSoundEffect("shot");
+    }
+    if ((port3_current & 0x08) && !(port3_previous & 0x08)) {
+      playSoundEffect("invaderkilled");
+    }
+    if ((port3_current & 0x04) && !(port3_previous & 0x04)) {
+      playSoundEffect("flash");
+    }
+    // if ((port3_current & 0x08) && !(port3_previous & 0x08)) {
+    //   playSoundEffect("invaderkilled.wav");
+    // }
+    
+  }
+  if (port5_current != port5_previous) {
+
+  }
+  
+  port3_previous = port3_current;
+  port5_previous = port5_current; 
+}
+
 #ifdef INTERRUPT_TIMING
 auto t1 = std::chrono::high_resolution_clock::now();
 #endif
@@ -340,12 +383,19 @@ void * graphicsThread(void *x) {
     // render here
     render();
 
+    // register sound effects
+    playSoundEffects();
+
     glfwPollEvents();
   }
 
   glfwTerminate();
+
+  CPU_on = false; // turn off CPU (IMPORTANT)
+  
   State8080_free(state);
   am_ports_free(am_ports);
+  free_sdl();
   exit(0);
   return 0;
 }
@@ -444,6 +494,8 @@ void * processorThread(void *x) {
 
 int main (int argc, char **argv) {
   INITIALIZE_PROCESSOR(state, argv);
+
+  INIT_AUDIO (); // sound
 
   CPU_on = true;
 
