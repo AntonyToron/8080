@@ -19,6 +19,8 @@ CPPFLAGS = -std=c++11
 LIBS = -lglfw3 -lm -lGL -lGLEW -lglut -lGLU -lpthread -lX11 -lXxf86vm -lXrandr -lXi -ldl -lXinerama -lXcursor -lSDL2 -lSDL2_mixer
 WX_LIBS = $(shell wx-config --libs)
 WX_FLAGS = $(shell wx-config --cxxflags)
+OPTIONAL = -static-libgcc # this will force all of the shared (.so) libraries to be
+# not be used and the .a (static) to be used, so executable bundles everything
 #LIBS += $(WX_LIBS)
 
 # Pattern rule, any .o file with .c file of same name will assume it
@@ -47,7 +49,7 @@ test: cpu_test.o CPU.o Utils.o Drivers.o
 playground: playground.o
 	$(CPP) $(CFLAGS) $< -o $@ $(LIBS)
 arcade: arcade_machine.o CPU.o Utils.o Drivers.o
-	$(CPP) $(CFLAGS) $< CPU.o Utils.o Drivers.o -o $@ $(LIBS)
+	$(CPP) $(CFLAGS) $(OPTIONAL) $< CPU.o Utils.o Drivers.o -o $@ $(LIBS)
 
 emulator: emulator.o
 	$(CPP) $(CFLAGS) $(WX_FLAGS) $< -o $@ $(WX_LIBS)

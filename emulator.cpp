@@ -28,8 +28,17 @@ bool Emulator::OnInit() {
 // CONSTRUCTOR OF THE CLASS, the list following : is the member initializer list
 // it is necessary in this case to properly initialize as a wxFrame
 MainFrame::MainFrame(const wxChar *title, int x, int y, int width, int height)
-  : wxFrame((wxFrame *) NULL, -1, title, wxPoint(x, y), wxSize(width, height)) {
-
+  : wxFrame((wxFrame *) NULL,
+	    -1,
+	    title,
+	    wxPoint(x, y),
+	    wxSize(width, height),
+	    wxDEFAULT_FRAME_STYLE,
+	    _T("Main")
+	    ) {
+  // args: parent, id (default if -1), title, position, size
+  // optional args: style, name (if to be referred to)
+  
 }
 
 
