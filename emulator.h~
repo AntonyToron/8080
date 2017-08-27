@@ -16,5 +16,5 @@ class MainFrame : public wxFrame {
  public:
   MainFrame(const wxChar *title, int x, int y, int width, int height);
   ~MainFrame();
-};
+}
   

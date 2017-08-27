@@ -26,7 +26,7 @@ WX_FLAGS = $(shell wx-config --cxxflags)
 #       $ (CC) $ (CFLAGS) -c $<
 
 # Dependency rules for non-file targets
-all: disassemble c_arcade arcade playground test 8080_EMU
+all: disassemble c_arcade arcade playground test emulator
 
 # clean directory
 clobber: clean
@@ -49,7 +49,7 @@ playground: playground.o
 arcade: arcade_machine.o CPU.o Utils.o Drivers.o
 	$(CPP) $(CFLAGS) $< CPU.o Utils.o Drivers.o -o $@ $(LIBS)
 
-8080_EMU: emulator.o
+emulator: emulator.o
 	$(CPP) $(CFLAGS) $(WX_FLAGS) $< -o $@ $(WX_LIBS)
 
 
