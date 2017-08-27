@@ -17,7 +17,7 @@ CFLAGS =
 CPPFLAGS = -std=c++11
 # -lGLEW -lglut-lGLEW -lglut
 #CPPLIBS = -lglfw3 -lm -lGL -lGLEW -lglut -lGLU -lpthread -lX11 -lXxf86vm -lXrandr -lXi -ldl -lXinerama -lXcursor -Wl,-Bstatic -lSDL2 -lSDL2_mixer -Wl,--as-needed
-CPPLIBS = -lglfw3 -lm -lGL -lGLEW -lglut -lGLU -lpthread -lX11 -lXxf86vm -lXrandr -lXi -ldl -lXinerama -lXcursor -lSDL2 -lSDL2_mixer -static-libgcc
+CPPLIBS = -lglfw3 -lm -lGL -lGLEW -lglut -lGLU -lpthread -lX11 -lXxf86vm -lXrandr -lXi -ldl -lXinerama -lXcursor /usr/lib/
 LIBS =  -lglfw3 -lm -lGL -lGLEW -lglut -lGLU -lpthread -lX11 -lXxf86vm -lXrandr -lXi -ldl -lXinerama -lXcursor -lSDL2 -lSDL2_mixer
 WX_LIBS = $(shell wx-config --libs)
 WX_FLAGS = $(shell wx-config --cxxflags)
