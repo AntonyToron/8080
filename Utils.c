@@ -50,7 +50,7 @@ Mix_Chunk *UFO = NULL;
 
 int UFO_channel;
 
-static void INIT_SDL () {
+static void INITIALIZE_SDL () {
   if (SDL_Init(SDL_INIT_AUDIO) < 0) {
     printf ("Error in initializing sdl audio\n");
     exit(1);
@@ -137,7 +137,7 @@ void playSoundEffect(const char *soundname) {
   }
 }
 
-void free_sdl() {
+void CLEAN_AUDIO() {
   Mix_FreeChunk(shot);
   Mix_FreeChunk(invaderKilled);
   Mix_FreeChunk(flash);
@@ -149,7 +149,7 @@ void free_sdl() {
 
 
 void INIT_AUDIO () {
-  INIT_SDL();
+  INITIALIZE_SDL();
 
   LOAD_WAVS();
 }

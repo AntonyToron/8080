@@ -1,5 +1,5 @@
 /*
-  File name: arcade_machine.cpp
+  File name: arcade_machine_library.cpp
 
   Description: Platform layer, defines the window and callbacks to use 
   the 8080 processor.
@@ -63,6 +63,8 @@ std::mutex m;
 std::mutex m2;
 std::condition_variable cv;
 std::unique_lock<std::mutex> lock(m);
+
+struct itimerval timer;
 
 
 uint8_t f = 0;
@@ -398,6 +400,14 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
   }
 }
 
+void turnOffTimer() {
+  struct itimerval it_val = { 0 };
+
+  setitimer(ITIMER_REAL, &it_val, &timer);
+  printf ("Turned off timer\n");
+  
+}
+
 void * graphicsThread(void *x) {
   printf ("Hello from graphics thread\n");
 
@@ -426,15 +436,33 @@ void * graphicsThread(void *x) {
     glfwPollEvents();
   }
 
+  /*
+    SHUT DOWN ALL THREADS AND TIMERS
+
+    TURN OFF GRAPHICS, SOUND, CLEAN MEMORY
+
+   */
+
   glfwTerminate();
 
+  // turn off timer
+  turnOffTimer();
+
   CPU_on = false; // turn off CPU (IMPORTANT)
+
+  // unlock CPU if locked
+  hardware_interrupt = true;
+  cv.notify_all();
+
+  // clean up memory
   
   State8080_free(state);
   am_ports_free(am_ports);
-  free_sdl();
-  
-  return 0;
+  CLEAN_AUDIO();
+
+  printf ("Turning off Graphics\n");
+  fflush(stdout);
+  pthread_exit(NULL);
 }
 
 void * hardwareThread(void *x) {
@@ -443,7 +471,7 @@ void * hardwareThread(void *x) {
   // --------------- arcade specific --------------------- //
   // add timer for 1/60 seconds to process graphics, 16.67 milliseconds
   struct sigaction sa;
-  struct itimerval timer;
+  //struct itimerval timer; GLOBAL
 
   memset (&sa, 0, sizeof (sa));
   sa.sa_handler = &graphicsInterrupt;
@@ -471,6 +499,10 @@ void * hardwareThread(void *x) {
   timer.it_interval.tv_usec = 8000;
 
   setitimer (ITIMER_REAL, &timer, NULL);
+
+  printf ("Exiting the hardware thread\n");
+  fflush(stdout);
+  pthread_exit(NULL);
 }
 
 void * processorThread(void *x) {
@@ -526,7 +558,11 @@ void * processorThread(void *x) {
       cyclesExecuted += cycles;      
       Emulate8080State(state);     
     }
-  } 
+  }
+
+  printf ("Turning off the CPU\n");
+  fflush(stdout);
+  pthread_exit(NULL);
 }
 
 void RUN_EMULATOR(ROM rom) {
@@ -546,4 +582,6 @@ void RUN_EMULATOR(ROM rom) {
   pthread_join(cpu, NULL);
   pthread_join(graphics, NULL);
   pthread_join(hardware, NULL);
+
+  printf ("Finished running ROM\n");
 }

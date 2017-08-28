@@ -13,5 +13,5 @@ void INIT_AUDIO ();
 
 void playSoundEffect(const char *filename);
 
-void free_sdl ();
+void CLEAN_AUDIO ();
 

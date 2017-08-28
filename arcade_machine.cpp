@@ -413,7 +413,7 @@ void * graphicsThread(void *x) {
   
   State8080_free(state);
   am_ports_free(am_ports);
-  free_sdl();
+  CLEAN_AUDIO();
   exit(0);
   return 0;
 }
