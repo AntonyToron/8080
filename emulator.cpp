@@ -10,6 +10,7 @@
 #include <wx/menu.h>
 #include <wx/sizer.h>
 #include <wx/filename.h>
+#include "arcade_machine_library.h"
 #include "emulator.h"
 
 // constructs Emualator and provides entry point
@@ -193,4 +194,7 @@ void MainFrame::OnExit(wxCommandEvent & event) {
 void MainFrame::SelectROM(wxCommandEvent & event) {
   printf ("ROM selected : %i\n", (int) rom);
   fflush (stdout);
+
+  RUN_EMULATOR(rom);
+  
 }

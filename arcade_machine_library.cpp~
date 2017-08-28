@@ -20,6 +20,8 @@
 #include <sys/time.h>
 #include <iomanip>
 
+#include "arcade_machine_library.h"
+
 extern "C" {
   #include "CPU.h"
 }
@@ -205,6 +207,23 @@ void INITIALIZE_PROCESSOR(State8080_T state, char **argv) {
     exit(1);
   }
 }
+
+void INITIALIZE_PROCESSOR_extern(State8080_T state, ROM rom) {
+  switch (rom) {
+  case INVADERS:
+    state = INIT_STATE_invaders ();
+
+    LOAD_ROM_invaders (state);  
+    break;
+  case BALLOON_BOMBER:
+    state = INIT_STATE_ballbomb ();
+
+    LOAD_ROM_ballbomb (state);
+    
+    break;
+  }
+}
+
 
 // ----------------------- MACHINE INFORMATION --------------------
 
@@ -510,8 +529,8 @@ void * processorThread(void *x) {
   } 
 }
 
-int main (int argc, char **argv) {
-  INITIALIZE_PROCESSOR(state, argv);
+void RUN_EMULATOR(ROM rom) {
+  INITIALIZE_PROCESSOR_extern(state, rom);
 
   INIT_AUDIO (); // sound
 
@@ -527,7 +546,4 @@ int main (int argc, char **argv) {
   pthread_join(cpu, NULL);
   pthread_join(graphics, NULL);
   pthread_join(hardware, NULL);
-  
-  return 0;
 }
-

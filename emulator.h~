@@ -49,7 +49,7 @@ class MainFrame : public wxFrame {
   void OnOpenFile (wxCommandEvent & event);
   void OnAbout (wxCommandEvent & event);
   void OnExit (wxCommandEvent & event);
-  void SelectROM ();
+  void SelectROM (wxCommandEvent & event);
 
   DECLARE_EVENT_TABLE() // alerts compiler that this class will have event table
 };

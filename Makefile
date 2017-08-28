@@ -6,7 +6,7 @@
 # Macros
 CC = gcc
 CPP = g++
-CFLAGS = 
+CFLAGS = -g
 #CFLAGS = -g -D CPU_DIAGNOSTIC
 #CFLAGS = -D INSTRUCTION_DEBUGGING
 #CFLAGS = -pg
@@ -14,7 +14,7 @@ CFLAGS =
 # CFLAGS = -g
 # CFLAGS = -D NDEBUG
 # CFLAGS = -D NDEBUG -O
-CPPFLAGS = -std=c++11
+CPPFLAGS = -std=c++11 -g
 # -lGLEW -lglut-lGLEW -lglut
 #CPPLIBS = -lglfw3 -lm -lGL -lGLEW -lglut -lGLU -lpthread -lX11 -lXxf86vm -lXrandr -lXi -ldl -lXinerama -lXcursor -Wl,-Bstatic -lSDL2 -lSDL2_mixer -Wl,--as-needed
 CPPLIBS = -lglfw3 -lm -lGL -lGLEW -lglut -lGLU -lpthread -lX11 -lXxf86vm -lXrandr -lXi -ldl -lXinerama -lXcursor -lSDL2 -lSDL2_mixer -static-libgcc
@@ -54,8 +54,8 @@ playground: playground.o
 arcade: arcade_machine.o CPU.o Utils.o Drivers.o
 	$(CPP) $(CFLAGS) $(OPTIONAL) $< CPU.o Utils.o Drivers.o -o $@ $(LIBS) #$(CPPLIBS)
 
-emulator: emulator.o
-	$(CPP) $(CFLAGS) $(WX_FLAGS) $< -o $@ $(WX_LIBS)
+emulator: emulator.o arcade_machine_library.o CPU.o Utils.o Drivers.o
+	$(CPP) $(CFLAGS) $(WX_FLAGS) $< arcade_machine_library.o CPU.o Utils.o Drivers.o -o $@ $(WX_LIBS) $(LIBS)
 
 
 # object file dependencies in recipes for all binary files
@@ -75,9 +75,11 @@ playground.o: playground.cpp
 	$(CPP) $(CFLAGS) -c $< $(LIBS)
 arcade_machine.o: arcade_machine.cpp
 	$(CPP) $(CPPFLAGS) -c $< $(LIBS)
+arcade_machine_library.o: arcade_machine_library.cpp
+	$(CPP) $(CPPFLAGS) -c $< $(LIBS)
 
 emulator.o: emulator.cpp
-	$(CPP) $(CPPFLAGS) $(WX_FLAGS) -c $< $(WX_LIBS)
+	$(CPP) $(CPPFLAGS) $(WX_FLAGS) -c $< $(WX_LIBS) $(LIBS)
 
 
 disassemble.o: disassemble.c disassembler.h
