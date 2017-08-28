@@ -52,7 +52,7 @@ test: cpu_test.o CPU.o Utils.o Drivers.o
 playground: playground.o
 	$(CPP) $(CFLAGS) $< -o $@ $(LIBS)
 arcade: arcade_machine.o CPU.o Utils.o Drivers.o
-	$(CPP) $(CFLAGS) $(OPTIONAL) $< CPU.o Utils.o Drivers.o -o $@ $(CPPLIBS) #$(CPPLIBS)
+	$(CPP) $(CFLAGS) $(OPTIONAL) $< CPU.o Utils.o Drivers.o -o $@ $(LIBS) #$(CPPLIBS)
 
 emulator: emulator.o
 	$(CPP) $(CFLAGS) $(WX_FLAGS) $< -o $@ $(WX_LIBS)
