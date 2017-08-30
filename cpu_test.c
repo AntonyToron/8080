@@ -8,6 +8,7 @@
 
 #include "CPU.h"
 #include "Utils.h"
+#include "arcade_machine.h"
 #include "Drivers.h"
 #include <stdio.h>
 #include <string.h>
@@ -22,7 +23,7 @@ Drivers_T DefaultDrivers () {
 
 // -------------------------- ARCADE CONFIGS --------------------------
 
-static ArcadeMachinePorts_T am_ports;
+static ArcadeMachine_T am;
 
 void Out5 (uint8_t ac) {
   
@@ -30,7 +31,7 @@ void Out5 (uint8_t ac) {
 
 Drivers_T ArcadeDrivers() {
   Drivers_T drivers = Drivers_init();
-  am_ports = am_ports_init_invaders();
+  am = ArcadeMachine_INIT(INVADERS);
 
   // shift registers
   config_drivers_out_port(drivers, &Out5, 5);

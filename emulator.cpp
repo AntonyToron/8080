@@ -10,7 +10,7 @@
 #include <wx/menu.h>
 #include <wx/sizer.h>
 #include <wx/filename.h>
-#include "arcade_machine_library.h"
+#include "arcade_machine.h"
 #include "emulator.h"
 
 // constructs Emualator and provides entry point
@@ -121,7 +121,7 @@ MainFrame::MainFrame(const wxChar *title, int x, int y, int width, int height)
   imagePanel = (ImagePanel *) NULL;
 
   //imagePanel = new ImagePanel(this, wxT("invaders_cabinet.jpg"), wxBITMAP_TYPE_JPEG);
-  imagePanel = new ImagePanel(this, wxT("space_invader_icon1.png"), wxBITMAP_TYPE_PNG);
+  imagePanel = new ImagePanel(this, wxT("./res/space_invader_icon1.png"), wxBITMAP_TYPE_PNG);
   sizer->Add(imagePanel,
 	     1,
 	     wxALIGN_CENTER | wxSHAPED | wxLEFT | wxTOP,

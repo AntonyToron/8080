@@ -7,7 +7,9 @@
 
 #include "CPU.h"
 #include "Utils.h"
+#include "arcade_machine.h"
 #include "Drivers.h"
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -22,28 +24,13 @@ Drivers_T DefaultDrivers () {
 
 // -------------------------- ARCADE CONFIGS --------------------------
 
-static ArcadeMachinePorts_T am_ports;
-
-void ArcadeOut4 (uint8_t ac) {
-  Arcade8080_write4 (ac, am_ports);
-}
-
-void ArcadeOut2 (uint8_t ac) {
-  Arcade8080_write2 (ac, am_ports);
-}
-
-uint8_t ArcadeRead3 () {
-  return Arcade8080_read3(am_ports);
-}
+static ArcadeMachine_T am;
 
 Drivers_T ArcadeDrivers() {
   Drivers_T drivers = Drivers_init();
-  am_ports = am_ports_init_invaders();
+  am = ArcadeMachine_INIT (INVADERS);
 
-  // shift registers
-  config_drivers_out_port(drivers, &ArcadeOut4, 4);
-  config_drivers_out_port(drivers, &ArcadeOut2, 2);
-  config_drivers_in_port(drivers, &ArcadeRead3, 3);
+  INITIALIZE_IO (drivers, INVADERS, am);
   
   return drivers;
 }

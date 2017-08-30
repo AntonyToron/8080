@@ -15,16 +15,13 @@ CFLAGS = -g
 # CFLAGS = -D NDEBUG
 # CFLAGS = -D NDEBUG -O
 CPPFLAGS = -std=c++11 -g
-# -lGLEW -lglut-lGLEW -lglut
-#CPPLIBS = -lglfw3 -lm -lGL -lGLEW -lglut -lGLU -lpthread -lX11 -lXxf86vm -lXrandr -lXi -ldl -lXinerama -lXcursor -Wl,-Bstatic -lSDL2 -lSDL2_mixer -Wl,--as-needed
 CPPLIBS = -lglfw3 -lm -lGL -lGLEW -lglut -lGLU -lpthread -lX11 -lXxf86vm -lXrandr -lXi -ldl -lXinerama -lXcursor -lSDL2 -lSDL2_mixer -static-libgcc
 LIBS =  -lglfw3 -lm -lGL -lGLEW -lglut -lGLU -lpthread -lX11 -lXxf86vm -lXrandr -lXi -ldl -lXinerama -lXcursor -lSDL2 -lSDL2_mixer
 WX_LIBS = $(shell wx-config --libs)
 WX_FLAGS = $(shell wx-config --cxxflags)
-OPTIONAL = #-static
-#OPTIONAL = -static-libgcc # this will force all of the shared (.so) libraries to be
-# not be used and the .a (static) to be used, so executable bundles everything
-#LIBS += $(WX_LIBS)
+INCLUDES = -I./hardware -I./utils -I./machine
+OBJS = ./obj/CPU.o ./obj/Utils.o ./obj/Drivers.o
+HEADERS = ./machine/CPU.h ./utils/Utils.h ./hardware/Drivers.h ./machine/arcade_machine.h
 
 # Pattern rule, any .o file with .c file of same name will assume it
 # %.o: %.c
@@ -35,54 +32,57 @@ all: disassemble c_arcade arcade playground test emulator
 
 # clean directory
 clobber: clean
-	rm -f *~ \#*\#
+	rm -f *~ \#*\# ./obj/*~ ./machine/*~ ./utils/*~ ./hardware/*~ ./obj/\#*\# ./machine/\#*\# ./utils/\#*\# ./hardware/\#*\#
+
 clean:
-	rm -f disassemble *.o
+	rm -f *.o ./obj/*.o ./machine/*.o ./utils/*.o ./hardware/*.o
+#	rm -rf $(GARBAGE)
+#	rm -f disassemble *.o
 
 # Dependency rules for file targets
 # include all files ncessary for building in -o shortcut case
-c_arcade: 8080Arcade.o CPU.o Utils.o Drivers.o
-	$(CC) $(CFLAGS) $< CPU.o Utils.o Drivers.o -o $@ $(LIBS)
-disassemble: disassemble.o disassembler.o
-	$(CC) $(CFLAGS) $< disassembler.o -o $@
+c_arcade: ./obj/8080Arcade.o $(OBJS)
+	$(CC) $(CFLAGS) $(INCLUDES) $< $(OBJS) -o $@ $(LIBS)
+disassemble: ./obj/disassemble.o ./obj/disassembler.o
+	$(CC) $(CFLAGS) $(INCLUDES) $< ./obj/disassembler.o -o $@
 
-test: cpu_test.o CPU.o Utils.o Drivers.o
-	$(CC) $(CFLAGS) -g $< CPU.o Utils.o Drivers.o -o $@ $(LIBS)
+test: ./obj/cpu_test.o $(OBJS)
+	$(CC) $(CFLAGS) $(INCLUDES) -g $< $(OBJS) -o $@ $(LIBS)
 
-playground: playground.o
-	$(CPP) $(CFLAGS) $< -o $@ $(LIBS)
-arcade: arcade_machine.o CPU.o Utils.o Drivers.o
-	$(CPP) $(CFLAGS) $(OPTIONAL) $< CPU.o Utils.o Drivers.o -o $@ $(LIBS) #$(CPPLIBS)
+playground: ./obj/playground.o
+	$(CPP) $(CFLAGS) $(INCLUDES) $< -o $@ $(LIBS)
+arcade: ./obj/arcade_machine_run.o ./obj/arcade_machine.o $(OBJS)
+	$(CPP) $(CFLAGS) $(OPTIONAL) $(INCLUDES) $< $(OBJS) ./obj/arcade_machine.o -o $@ $(LIBS) #$(CPPLIBS)
 
-emulator: emulator.o arcade_machine_library.o CPU.o Utils.o Drivers.o
-	$(CPP) $(CFLAGS) $(WX_FLAGS) $< arcade_machine_library.o CPU.o Utils.o Drivers.o -o $@ $(WX_LIBS) $(LIBS)
+emulator: ./obj/emulator.o ./obj/arcade_machine.o $(OBJS)
+	$(CPP) $(CFLAGS) $(WX_FLAGS) $(INCLUDES) $< ./obj/arcade_machine.o $(OBJS) -o $@ $(WX_LIBS) $(LIBS)
 
 
 # object file dependencies in recipes for all binary files
-8080Arcade.o: 8080Arcade.c CPU.h Utils.h Drivers.h
-	$(CC) $(CFLAGS) -c $<
-CPU.o: CPU.c CPU.h
-	$(CC) $(CFLAGS) -c $<
-Utils.o: Utils.c Utils.h
-	$(CC) $(CFLAGS) -c $<
-Drivers.o: Drivers.c Drivers.h
-	$(CC) $(CFLAGS) -c $<
+./obj/8080Arcade.o: 8080Arcade.c $(HEADERS)
+	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
+./obj/CPU.o: ./machine/CPU.c ./machine/CPU.h
+	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
+./obj/Utils.o: ./utils/Utils.c ./utils/Utils.h
+	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
+./obj/Drivers.o: ./hardware/Drivers.c ./hardware/Drivers.h ./machine/arcade_machine.h ./machine/CPU.h
+	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
 
-cpu_test.o: cpu_test.c CPU.h Utils.h Drivers.h
-	$(CC) $(CFLAGS) -c $<
+./obj/cpu_test.o: cpu_test.c $(HEADERS)
+	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
 
-playground.o: playground.cpp
-	$(CPP) $(CFLAGS) -c $< $(LIBS)
-arcade_machine.o: arcade_machine.cpp
-	$(CPP) $(CPPFLAGS) -c $< $(LIBS)
-arcade_machine_library.o: arcade_machine_library.cpp
-	$(CPP) $(CPPFLAGS) -c $< $(LIBS)
+./obj/playground.o: playground.cpp
+	$(CPP) $(CFLAGS) $(INCLUDES) -c $< $(LIBS) -o $@
+./obj/arcade_machine.o: ./machine/arcade_machine.cpp ./machine/arcade_machine.h
+	$(CPP) $(CPPFLAGS) $(INCLUDES) -c $< $(LIBS) -o $@
+./obj/arcade_machine_run.o: arcade_machine_run.cpp
+	$(CPP) $(CPPFLAGS) $(INCLUDES) -c $< $(LIBS) -o $@
 
-emulator.o: emulator.cpp
-	$(CPP) $(CPPFLAGS) $(WX_FLAGS) -c $< $(WX_LIBS) $(LIBS)
+./obj/emulator.o: emulator.cpp
+	$(CPP) $(CPPFLAGS) $(WX_FLAGS) $(INCLUDES) -c $< $(WX_LIBS) $(LIBS) -o $@
 
 
-disassemble.o: disassemble.c disassembler.h
-	$(CC) $(CFLAGS) -c $<
-disassembler.o: disassembler.c disassembler.h
-	$(CC) $(CFLAGS) -c $<
+./obj/disassemble.o: ./machine/disassemble.c ./machine/disassembler.h
+	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
+./obj/disassembler.o: ./machine/disassembler.c ./machine/disassembler.h
+	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@

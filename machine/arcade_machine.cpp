@@ -20,7 +20,7 @@
 #include <sys/time.h>
 #include <iomanip>
 
-#include "arcade_machine_library.h"
+#include "arcade_machine.h"
 
 extern "C" {
   #include "CPU.h"
@@ -64,6 +64,7 @@ std::mutex m2;
 std::condition_variable cv;
 std::unique_lock<std::mutex> lock(m);
 
+struct itimerval timer;
 
 uint8_t f = 0;
 // -------------------------- STATE INITIALIZATION ---------------------
@@ -77,66 +78,34 @@ Drivers_T DefaultDrivers () {
 
 // -------------------------- ARCADE CONFIGS --------------------------
 
-static ArcadeMachinePorts_T am_ports;
+static ArcadeMachine_T am;
 
-void ArcadeOut4 (uint8_t ac) {
-  Arcade8080_write4 (ac, am_ports);
-}
-
-void ArcadeOut2 (uint8_t ac) {
-  Arcade8080_write2 (ac, am_ports);
-}
-
-void ArcadeOut3 (uint8_t ac) {
-  Arcade8080_write3(ac, am_ports);
-}
-
-void ArcadeOut5 (uint8_t ac) {
-  Arcade8080_write5(ac, am_ports);
-}
-
-uint8_t ArcadeRead3 () {
-  return Arcade8080_read3(am_ports);
-}
-
-uint8_t ArcadeRead0 () {
-  return Arcade8080_read0(am_ports);
-}
-
-uint8_t ArcadeRead1 () {
-  return Arcade8080_read1(am_ports);
-}
-
-uint8_t ArcadeRead2 () {
-  return Arcade8080_read2(am_ports);
-}
-
-Drivers_T ArcadeDrivers() {
+Drivers_T ArcadeDrivers(ROM rom) {
   Drivers_T drivers = Drivers_init();
-  am_ports = am_ports_init();
-
-  // OUT
-  config_drivers_out_port(drivers, &ArcadeOut4, 4); // shift registers
-  config_drivers_out_port(drivers, &ArcadeOut2, 2);
-  config_drivers_out_port(drivers, &ArcadeOut3, 3); // sound
-  config_drivers_out_port(drivers, &ArcadeOut5, 5);
-
-  // IN
-  config_drivers_in_port(drivers, &ArcadeRead3, 3);
-  config_drivers_in_port(drivers, &ArcadeRead0, 0);
-  config_drivers_in_port(drivers, &ArcadeRead1, 1);
-  config_drivers_in_port(drivers, &ArcadeRead2, 2);
+  am = ArcadeMachine_INIT (rom);
+  INITIALIZE_IO (drivers, rom, am);
    
   return drivers;
 }
-
 
 // -------------------------- INVADERS STATE ----------------------------
 
 void LOAD_ROM_invaders (State8080_T state) {
   // load into memory
   size_t bytesRead;
-  unsigned char *buffer = readFileIntoBuffer("invaders", &bytesRead);
+  unsigned char *buffer = readFileIntoBuffer("./ROMS/invaders", &bytesRead);
+  /*size_t r1, r2, r3, r4;
+  unsigned char *tn01 = readFileIntoBuffer("./ROMS/invaders.h", &r1);
+  unsigned char *tn02 = readFileIntoBuffer("./ROMS/invaders.g", &r2);
+  unsigned char *tn03 = readFileIntoBuffer("./ROMS/invaders.f", &r3);
+  unsigned char *tn04 = readFileIntoBuffer("./ROMS/invaders.e", &r4);
+
+  // load the rom
+  State8080_load_mem(state, 0x0000, r1, tn01);
+  State8080_load_mem(state, 0x0800, 0x0800 + r2, tn02);
+  State8080_load_mem(state, 0x1000, 0x1000 + r3, tn03);
+  State8080_load_mem(state, 0x1800, 0x1800 + r4, tn04);
+  */
 
   // load the rom
   State8080_load_mem(state, 0, bytesRead, buffer);
@@ -148,7 +117,29 @@ void LOAD_ROM_invaders (State8080_T state) {
 State8080_T INIT_STATE_invaders () {
   state = State8080_init ();
 
-  State8080_config_drivers_default(state, ArcadeDrivers());
+  State8080_config_drivers_default(state, ArcadeDrivers(INVADERS));
+  
+  return state;
+}
+
+// ------------------------- GUNFIGHT STATE ------------------------------
+
+void LOAD_ROM_gunfight (State8080_T state) {
+  // load into memory
+  size_t bytesRead;
+  unsigned char *buffer = readFileIntoBuffer("./ROMS/gunfight", &bytesRead);
+
+  // load the rom
+  State8080_load_mem(state, 0, bytesRead, buffer);
+    
+  printf ("Successfully loaded ROM\n");
+  
+}
+
+State8080_T INIT_STATE_gunfight () {
+  state = State8080_init ();
+
+  State8080_config_drivers_default(state, ArcadeDrivers(GUNFIGHT));
   
   return state;
 }
@@ -168,10 +159,10 @@ void LOAD_ROM_ballbomb (State8080_T state) {
 
   // load the rom
   State8080_load_mem(state, 0x0000, r1, tn01);
-  State8080_load_mem(state, 0x0800, r2, tn02);
-  State8080_load_mem(state, 0x1000, r3, tn03);
-  State8080_load_mem(state, 0x1800, r4, tn04);
-  State8080_load_mem(state, 0x4000, r5, tn05);
+  State8080_load_mem(state, 0x0800, 0x0800 + r2, tn02);
+  State8080_load_mem(state, 0x1000, 0x1000 + r3, tn03);
+  State8080_load_mem(state, 0x1800, 0x1800 + r4, tn04);
+  State8080_load_mem(state, 0x4000, 0x4000 + r5, tn05);
 
   // color mapping
   //State8080_load_mem(state, 0x0000, r1, tn06);
@@ -184,31 +175,144 @@ void LOAD_ROM_ballbomb (State8080_T state) {
 State8080_T INIT_STATE_ballbomb () {
   state = State8080_init ();
 
-  State8080_config_drivers_default(state, ArcadeDrivers());
+  State8080_config_drivers_default(state, ArcadeDrivers(BALLOON_BOMBER));
+  
+  return state;
+}
+
+// ------------------------- SPACE ENCOUNTERS STATE ------------------------
+
+void LOAD_ROM_encounters (State8080_T state) {
+  // load into memory
+  size_t r1, r2, r3, r4, r5, r6, r7, r8;
+  unsigned char *tn01 = readFileIntoBuffer("./ROMS/4m33.h", &r1);
+  unsigned char *tn02 = readFileIntoBuffer("./ROMS/4m32.g", &r2);
+  unsigned char *tn03 = readFileIntoBuffer("./ROMS/4m31.f", &r3);
+  unsigned char *tn04 = readFileIntoBuffer("./ROMS/4m30.e", &r4);
+  unsigned char *tn05 = readFileIntoBuffer("./ROMS/4m29.d", &r5);
+  unsigned char *tn06 = readFileIntoBuffer("./ROMS/4m28.c", &r6);
+  unsigned char *tn07 = readFileIntoBuffer("./ROMS/4m27.b", &r7);
+  unsigned char *tn08 = readFileIntoBuffer("./ROMS/4m26.a", &r8);
+
+  // load the rom
+  size_t size = 0x0800;
+  
+  State8080_load_mem(state, 0x0000, size, tn01);
+  State8080_load_mem(state, 0x0800, 0x0800 + size, tn02);
+  State8080_load_mem(state, 0x1000, 0x1000 + size, tn03);
+  State8080_load_mem(state, 0x1800, 0x1800 + size, tn04);
+  State8080_load_mem(state, 0x4000, 0x4000 + size, tn05);
+  State8080_load_mem(state, 0x4800, 0x4800 + size, tn06);
+  State8080_load_mem(state, 0x5000, 0x5000 + size, tn07);
+  State8080_load_mem(state, 0x5800, 0x5800 + size, tn08);
+    
+  printf ("Successfully loaded ROM\n");
+  
+}
+
+State8080_T INIT_STATE_encounters () {
+  state = State8080_init ();
+
+  State8080_config_drivers_default(state, ArcadeDrivers(SPACE_ENCOUNTERS));
+  
+  return state;
+}
+
+// ------------------------- SEA WOLF STATE ------------------------
+
+void LOAD_ROM_seawolf (State8080_T state) {
+  // load into memory
+  size_t r1, r2, r3, r4;
+  unsigned char *tn01 = readFileIntoBuffer("./ROMS/sw0041.h", &r1);
+  unsigned char *tn02 = readFileIntoBuffer("./ROMS/sw0042.g", &r2);
+  unsigned char *tn03 = readFileIntoBuffer("./ROMS/sw0043.f", &r3);
+  unsigned char *tn04 = readFileIntoBuffer("./ROMS/sw0044.e", &r4);
+
+  // load the rom
+  size_t size = 0x0400;
+  
+  State8080_load_mem(state, 0x0000, size, tn01);
+  State8080_load_mem(state, 0x0400, 0x0400 + size, tn02);
+  State8080_load_mem(state, 0x0800, 0x0800 + size, tn03);
+  State8080_load_mem(state, 0x0c00, 0x0c00 + size, tn04);
+
+  printf ("Successfully loaded ROM\n");
+  
+}
+
+State8080_T INIT_STATE_seawolf () {
+  state = State8080_init ();
+
+  State8080_config_drivers_default(state, ArcadeDrivers(SEAWOLF));
+  
+  return state;
+}
+
+// ------------------------- M-4 STATE ------------------------
+
+void LOAD_ROM_m4 (State8080_T state) {
+  // load into memory
+  size_t r1, r2, r3, r4;
+  unsigned char *tn01 = readFileIntoBuffer("./ROMS/m4.h", &r1);
+  unsigned char *tn02 = readFileIntoBuffer("./ROMS/m4.g", &r2);
+  unsigned char *tn03 = readFileIntoBuffer("./ROMS/m4.f", &r3);
+  unsigned char *tn04 = readFileIntoBuffer("./ROMS/m4.e", &r4);
+
+  // load the rom
+  size_t size = 0x0800;
+  
+  State8080_load_mem(state, 0x0000, size, tn01);
+  State8080_load_mem(state, 0x0800, 0x0800 + size, tn02);
+  State8080_load_mem(state, 0x1000, 0x1000 + size, tn03);
+  State8080_load_mem(state, 0x1800, 0x1800 + size, tn04);
+
+  printf ("Successfully loaded ROM\n");
+  
+}
+
+State8080_T INIT_STATE_m4 () {
+  state = State8080_init ();
+
+  State8080_config_drivers_default(state, ArcadeDrivers(M4));
+  
+  return state;
+}
+
+// ------------------------- BOWLING STATE ------------------------
+
+void LOAD_ROM_bowling (State8080_T state) {
+  // load into memory
+  size_t r1, r2, r3, r4, r5;
+  unsigned char *tn01 = readFileIntoBuffer("./ROMS/h.cpu", &r1);
+  unsigned char *tn02 = readFileIntoBuffer("./ROMS/g.cpu", &r2);
+  unsigned char *tn03 = readFileIntoBuffer("./ROMS/f.cpu", &r3);
+  unsigned char *tn04 = readFileIntoBuffer("./ROMS/e.cpu", &r4);
+  unsigned char *tn05 = readFileIntoBuffer("./ROMS/d.cpu", &r5);
+
+  // load the rom
+  size_t size = 0x0800;
+  
+  State8080_load_mem(state, 0x0000, size, tn01);
+  State8080_load_mem(state, 0x0800, 0x0800 + size, tn02);
+  State8080_load_mem(state, 0x1000, 0x1000 + size, tn03);
+  State8080_load_mem(state, 0x1800, 0x1800 + size, tn04);
+  State8080_load_mem(state, 0x4000, 0x4000 + size, tn05);
+
+  printf ("Successfully loaded ROM\n");
+  
+}
+
+State8080_T INIT_STATE_bowling () {
+  state = State8080_init ();
+
+  State8080_config_drivers_default(state, ArcadeDrivers(BOWLING));
   
   return state;
 }
 
 // -------------------------------------------------------------------
 
-void INITIALIZE_PROCESSOR(State8080_T state, char **argv) {
-  if (strcmp(argv[1], "invaders") == 0) {
-    state = INIT_STATE_invaders ();
-
-    LOAD_ROM_invaders (state);                          
-  }
-  else if (strcmp(argv[1], "ballbomb") == 0) {
-    state = INIT_STATE_ballbomb ();
-
-    LOAD_ROM_ballbomb (state);
-  }
-  else {
-    fprintf (stderr, "This ROM is not supported\n");
-    exit(1);
-  }
-}
-
-void INITIALIZE_PROCESSOR_extern(State8080_T state, ROM rom) {
+void INITIALIZE_PROCESSOR(State8080_T state, ROM rom) {
   switch (rom) {
   case INVADERS:
     state = INIT_STATE_invaders ();
@@ -221,9 +325,23 @@ void INITIALIZE_PROCESSOR_extern(State8080_T state, ROM rom) {
     LOAD_ROM_ballbomb (state);
     
     break;
+  case SEAWOLF:
+    state = INIT_STATE_seawolf ();
+
+    LOAD_ROM_seawolf (state);
+
+    break;
+  case GUNFIGHT:
+    state = INIT_STATE_gunfight ();
+
+    LOAD_ROM_gunfight (state);
+
+    break;
+  default:
+    fprintf (stderr, "This ROM is not supported\n");
+    exit(0);
   }
 }
-
 
 // ----------------------- MACHINE INFORMATION --------------------
 
@@ -286,8 +404,8 @@ uint8_t port5_previous = 0x00;
 
 void playSoundEffects() {
   // check ports 3 and 5 for sound
-  uint8_t port3_current = am_ports_get3(am_ports);
-  uint8_t port5_current = am_ports_get5(am_ports);
+  uint8_t port3_current = am_ports_get3(am);
+  uint8_t port5_current = am_ports_get5(am);
 
   if (port3_current != port3_previous) {
     if ((port3_current & 0x02) && !(port3_previous & 0x02)) {
@@ -362,40 +480,48 @@ void graphicsInterrupt(int value) {
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
   // ------------------ GAME INIT -------------------- //
   if (key == GLFW_KEY_C && action == GLFW_PRESS) {
-    INSERT_COIN (am_ports);
+    ARCADE_CONTROL(am, INSERT_COIN, INVADERS);
   }
   if (key == GLFW_KEY_C && action == GLFW_RELEASE) {
-    REGISTER_COIN (am_ports);
+    ARCADE_CONTROL(am, REGISTER_COIN, INVADERS);
   }
   
   if (key == GLFW_KEY_ENTER && action == GLFW_PRESS) {
-    P1_START_DOWN (am_ports);
+    ARCADE_CONTROL(am, P1_START_DOWN, INVADERS);
   }
   if (key == GLFW_KEY_ENTER && action == GLFW_RELEASE) {
-    P1_START_UP (am_ports);
+    ARCADE_CONTROL(am, P1_START_UP, INVADERS);
   }
 
   // ----------------- GAME CONTROLS ------------------ //
   if (key == GLFW_KEY_SPACE && action == GLFW_PRESS) {
-    P1_SHOT_DOWN (am_ports);
+    ARCADE_CONTROL(am, P1_SHOT_DOWN, INVADERS);
   }
   if (key == GLFW_KEY_SPACE && action == GLFW_RELEASE) {
-    P1_SHOT_UP (am_ports);
+    ARCADE_CONTROL(am, P1_SHOT_UP, INVADERS);
   }
 
   // ----------------- MOVE CONTROLS ------------------ //
   if (key == GLFW_KEY_LEFT && action == GLFW_PRESS) {
-    P1_LEFT_DOWN (am_ports);
+    ARCADE_CONTROL(am, P1_LEFT_DOWN, INVADERS);
   }
   if (key == GLFW_KEY_LEFT && action == GLFW_RELEASE) {
-    P1_LEFT_UP (am_ports);
+    ARCADE_CONTROL(am, P1_LEFT_UP, INVADERS);
   }
   if (key == GLFW_KEY_RIGHT && action == GLFW_PRESS) {
-    P1_RIGHT_DOWN (am_ports);
+    ARCADE_CONTROL(am, P1_RIGHT_DOWN, INVADERS);
   }
   if (key == GLFW_KEY_RIGHT && action == GLFW_RELEASE) {
-    P1_RIGHT_UP (am_ports);
+    ARCADE_CONTROL(am, P1_RIGHT_UP, INVADERS);
   }
+}
+
+void turnOffTimer() {
+  struct itimerval it_val = { 0 };
+
+  setitimer(ITIMER_REAL, &it_val, &timer);
+  printf ("Turned off timer\n");
+  
 }
 
 void * graphicsThread(void *x) {
@@ -426,15 +552,32 @@ void * graphicsThread(void *x) {
     glfwPollEvents();
   }
 
+  /*
+    SHUT DOWN ALL THREADS AND TIMERS
+
+    TURN OFF GRAPHICS, SOUND, CLEAN MEMORY
+
+   */
+  
   glfwTerminate();
 
+  // turn off timer
+  turnOffTimer();
+
   CPU_on = false; // turn off CPU (IMPORTANT)
+
+  // unlock CPU if locked
+  hardware_interrupt = true;
+  cv.notify_all();
+
+  // clean up memory
   
   State8080_free(state);
-  am_ports_free(am_ports);
-  free_sdl();
-  exit(0);
-  return 0;
+  ArcadeMachine_free(am);
+  CLEAN_AUDIO();
+
+  printf ("Turning off Graphics\n");
+  pthread_exit(NULL);
 }
 
 void * hardwareThread(void *x) {
@@ -443,7 +586,7 @@ void * hardwareThread(void *x) {
   // --------------- arcade specific --------------------- //
   // add timer for 1/60 seconds to process graphics, 16.67 milliseconds
   struct sigaction sa;
-  struct itimerval timer;
+  //struct itimerval timer; GLOBAL
 
   memset (&sa, 0, sizeof (sa));
   sa.sa_handler = &graphicsInterrupt;
@@ -468,9 +611,12 @@ void * hardwareThread(void *x) {
     to produce close to correct results.
 
    */
-  timer.it_interval.tv_usec = 8000;
+  timer.it_interval.tv_usec = 8335; //8000;
 
   setitimer (ITIMER_REAL, &timer, NULL);
+
+  printf ("Turning off hardware\n");
+  pthread_exit(NULL);
 }
 
 void * processorThread(void *x) {
@@ -517,6 +663,7 @@ void * processorThread(void *x) {
 	
 	unsigned char op = (currentInterrupt << 3) | 0xC7;
 	cyclesExecuted += 11;      // cycles for RST
+	DEC_PC(state);             // simulate PC for RST instruction
 	Emulate8080Op(state, &op);
 	State8080_setIE(state, 0); // IE is set to 0 before interrupt exec
       }
@@ -526,11 +673,14 @@ void * processorThread(void *x) {
       cyclesExecuted += cycles;      
       Emulate8080State(state);     
     }
-  } 
+  }
+
+  printf ("Turning off CPU\n");
+  pthread_exit(NULL);
 }
 
 void RUN_EMULATOR(ROM rom) {
-  INITIALIZE_PROCESSOR_extern(state, rom);
+  INITIALIZE_PROCESSOR(state, rom);
 
   INIT_AUDIO (); // sound
 
@@ -546,4 +696,9 @@ void RUN_EMULATOR(ROM rom) {
   pthread_join(cpu, NULL);
   pthread_join(graphics, NULL);
   pthread_join(hardware, NULL);
+
+  printf ("Finished running ROM\n");
 }
+
+
+

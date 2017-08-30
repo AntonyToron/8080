@@ -1,9 +1,0 @@
-/*
-  File name : arcade_machine.h
-  Author : Antony Toron
-
-  Description : Defines an interface with starting the 8080 arcade machine.
-
- */
-
-enum ROM {INVADERS, BALLOON_BOMBER};
