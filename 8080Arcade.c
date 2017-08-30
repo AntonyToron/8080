@@ -38,7 +38,7 @@ uint8_t ArcadeRead3 () {
 
 Drivers_T ArcadeDrivers() {
   Drivers_T drivers = Drivers_init();
-  am_ports = am_ports_init();
+  am_ports = am_ports_init_invaders();
 
   // shift registers
   config_drivers_out_port(drivers, &ArcadeOut4, 4);

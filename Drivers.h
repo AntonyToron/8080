@@ -10,7 +10,7 @@
 
 typedef struct ArcadeMachinePorts * ArcadeMachinePorts_T;
 
-ArcadeMachinePorts_T am_ports_init ();
+ArcadeMachinePorts_T am_ports_init_invaders ();
 
 void am_ports_free (ArcadeMachinePorts_T am_ports);
 

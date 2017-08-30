@@ -416,9 +416,7 @@ static void CALL_conditional (State8080_T state, uint8_t condition) {
 }
 
 // similar to call, but calls interrupt code
-static void RST(State8080_T state, uint8_t opcode) {
-  state->pc += 1; // for op code
-  
+void RST(State8080_T state, uint8_t opcode) {  
   // push program counter
   PushPC(state);
 
@@ -426,13 +424,6 @@ static void RST(State8080_T state, uint8_t opcode) {
   uint16_t addr = (opcode & 0x38) & 0xffff;
   state->pc = addr;
 }
-
-// SHOULD BE CALLED IF CALLING RST FROM HARDWARE (simulates reading in a RST
-// instruction)
-void DEC_PC(State8080_T state) {
-  state->pc -= 1;
-}
-
 uint8_t times = 0;
 void Emulate8080Op(State8080_T state, unsigned char *opcode) {
   #ifdef INSTRUCTION_DEBUGGING
@@ -988,6 +979,7 @@ void Emulate8080Op(State8080_T state, unsigned char *opcode) {
   case 0x03:               // INX B, increment BC
     {
       uint16_t BC = (state->registers[0]<<8) | (state->registers[1]);
+      
       uint16_t sum = BC + 1;
       // populate bc
       state->registers[0] = (uint8_t) (sum>>8);

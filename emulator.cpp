@@ -101,11 +101,15 @@ MainFrame::MainFrame(const wxChar *title, int x, int y, int width, int height)
   //CreateStatusBar(3);
   status->SetFieldsCount(3);
   status->SetStatusText("Ready", 0);
-  status->SetStatusText("No ROM selected", 1);
+  status->SetStatusText("ROM Selected", 1);
+  status->SetStatusText("Space Invaders (Taito, 1978)", 2);
 
   // can change these when necessary
-  const int styles[] = { wxSB_RAISED, wxSB_RAISED, wxSB_FLAT };
+  const int styles[] = { wxSB_RAISED, wxSB_RAISED, wxSB_RAISED };
   status->SetStatusStyles(3, styles);
+
+  const int widths[] = { -1, -1, 250 }; // right one gets 100 pixels, others get rest
+  status->SetStatusWidths(3, widths);
 
   SetStatusBar(status);
 

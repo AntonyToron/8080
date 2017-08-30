@@ -115,7 +115,7 @@ uint8_t ArcadeRead2 () {
 
 Drivers_T ArcadeDrivers() {
   Drivers_T drivers = Drivers_init();
-  am_ports = am_ports_init();
+  am_ports = am_ports_init_invaders();
 
   // OUT
   config_drivers_out_port(drivers, &ArcadeOut4, 4); // shift registers
@@ -549,6 +549,7 @@ void * processorThread(void *x) {
 	
 	unsigned char op = (currentInterrupt << 3) | 0xC7;
 	cyclesExecuted += 11;      // cycles for RST
+	DEC_PC(state);             // simulate reading in OP for RST
 	Emulate8080Op(state, &op);
 	State8080_setIE(state, 0); // IE is set to 0 before interrupt exec
       }

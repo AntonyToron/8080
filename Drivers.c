@@ -24,7 +24,7 @@ struct ArcadeMachinePorts {
   // fill in other necessary memory
 };
 
-ArcadeMachinePorts_T am_ports_init () {
+ArcadeMachinePorts_T am_ports_init_invaders () {
   ArcadeMachinePorts_T am_ports = (struct ArcadeMachinePorts *) malloc (sizeof (struct ArcadeMachinePorts));
 
   am_ports->shift_registers[0] = 0;
@@ -33,6 +33,22 @@ ArcadeMachinePorts_T am_ports_init () {
 
   am_ports->port0 = 0x0E;
   am_ports->port1 = 0x08;
+  am_ports->port2 = 0x00;
+  am_ports->port3 = 0x00;
+  am_ports->port5 = 0x00;
+  
+  return am_ports;
+}
+
+ArcadeMachinePorts_T am_ports_init_gunfight () {
+  ArcadeMachinePorts_T am_ports = (struct ArcadeMachinePorts *) malloc (sizeof (struct ArcadeMachinePorts));
+
+  am_ports->shift_registers[0] = 0;
+  am_ports->shift_registers[1] = 0;
+  am_ports->offset = 0;
+
+  am_ports->port0 = 0x00;
+  am_ports->port1 = 0x00;
   am_ports->port2 = 0x00;
   am_ports->port3 = 0x00;
   am_ports->port5 = 0x00;

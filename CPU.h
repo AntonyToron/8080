@@ -20,6 +20,8 @@ State8080_T State8080_init();
 
 void State8080_free (State8080_T state);
 
+void DEC_PC(State8080_T state);
+
 ConditionCodes_T ConditionCodes_init();
 
 Drivers_T Drivers_init();
