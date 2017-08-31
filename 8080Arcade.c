@@ -5,6 +5,7 @@
   Author : Antony Toron
  */
 
+#include "Types.h"
 #include "CPU.h"
 #include "Utils.h"
 #include "arcade_machine.h"

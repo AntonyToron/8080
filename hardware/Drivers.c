@@ -6,6 +6,7 @@
   Author : Antony Toron
 */
 
+#include "Types.h"
 #include "Drivers.h"
 #include "arcade_machine.h"
 #include "CPU.h"
@@ -16,11 +17,9 @@
 // -------------------- ARCADE MACHINE ---------------------
 
 struct DIPSettings {
-  int bank_1[8]; // 1 = ON, 0 = OFF
-  int bank_2[8];
+  uint8_t bank_1; // 1 = ON, 0 = OFF
+  uint8_t bank_2;
 };
-
-typedef struct DIPSettings * DIPSettings_T;
 
 struct ArcadeMachine {
   uint8_t shift_registers[2];
@@ -39,8 +38,6 @@ static ArcadeMachine_T CURRENT_AM = NULL; // reference to the functions below
 
 ArcadeMachine_T ArcadeMachine_INIT (ROM rom) {
   ArcadeMachine_T am = (struct ArcadeMachine *) malloc (sizeof (struct ArcadeMachine));
-
-  DIPSettings_T dip = (struct DIPSettings *) malloc (sizeof (struct DIPSettings));
 
   switch (rom) {
   case INVADERS:
@@ -66,22 +63,34 @@ ArcadeMachine_T ArcadeMachine_INIT (ROM rom) {
     am->port5 = 0x00;
     break;
   }
-
-  am->dip = dip;
   
   return am;
 }
 
-void DIP_SETTING_SET (ArcadeMachine_T am, int bank, int which, int value) {
+void APPLY_DIP_SETTINGS (ArcadeMachine_T am, DIPSettings_T dip) {
+  am->dip = dip;
+}
+
+void DIP_SETTING_SET (DIPSettings_T dip, uint8_t bank, uint8_t which, uint8_t value) {
   if (bank == 1) {
-    am->dip->bank_1[which] = value;
+    dip->bank_1 &= (value << which);
+    //dip->bank_1[which] = value;
   }
   else if (bank == 2) {
-    am->dip->bank_2[which] = value;
+    dip->bank_2 &= (value << which);
+    //dip->bank_2[which] = value;
   }
 }
 
+DIPSettings_T DIP_INIT () {
+  DIPSettings_T dip = (struct DIPSettings *) malloc (sizeof (struct DIPSettings));
+  
+  return dip;
+}
+
 void ArcadeMachine_free (ArcadeMachine_T am) {
+  free(am->dip);
+  
   free(am);
 }
 

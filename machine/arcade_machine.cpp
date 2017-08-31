@@ -19,6 +19,7 @@
 #include <pthread.h>
 #include <sys/time.h>
 #include <iomanip>
+#include "Types.h"
 
 #include "arcade_machine.h"
 
@@ -80,10 +81,12 @@ Drivers_T DefaultDrivers () {
 
 static ArcadeMachine_T am;
 
-Drivers_T ArcadeDrivers(ROM rom) {
+Drivers_T ArcadeDrivers(ROM rom, DIPSettings_T dip) {
   Drivers_T drivers = Drivers_init();
   am = ArcadeMachine_INIT (rom);
   INITIALIZE_IO (drivers, rom, am);
+
+  APPLY_DIP_SETTINGS(am, dip);
    
   return drivers;
 }
@@ -114,10 +117,10 @@ void LOAD_ROM_invaders (State8080_T state) {
   
 }
 
-State8080_T INIT_STATE_invaders () {
+State8080_T INIT_STATE_invaders (DIPSettings_T dip) {
   state = State8080_init ();
 
-  State8080_config_drivers_default(state, ArcadeDrivers(INVADERS));
+  State8080_config_drivers_default(state, ArcadeDrivers(INVADERS, dip));
   
   return state;
 }
@@ -136,10 +139,10 @@ void LOAD_ROM_gunfight (State8080_T state) {
   
 }
 
-State8080_T INIT_STATE_gunfight () {
+State8080_T INIT_STATE_gunfight (DIPSettings_T dip) {
   state = State8080_init ();
 
-  State8080_config_drivers_default(state, ArcadeDrivers(GUNFIGHT));
+  State8080_config_drivers_default(state, ArcadeDrivers(GUNFIGHT, dip));
   
   return state;
 }
@@ -172,10 +175,10 @@ void LOAD_ROM_ballbomb (State8080_T state) {
   
 }
 
-State8080_T INIT_STATE_ballbomb () {
+State8080_T INIT_STATE_ballbomb (DIPSettings_T dip) {
   state = State8080_init ();
 
-  State8080_config_drivers_default(state, ArcadeDrivers(BALLOON_BOMBER));
+  State8080_config_drivers_default(state, ArcadeDrivers(BALLOON_BOMBER, dip));
   
   return state;
 }
@@ -210,10 +213,10 @@ void LOAD_ROM_encounters (State8080_T state) {
   
 }
 
-State8080_T INIT_STATE_encounters () {
+State8080_T INIT_STATE_encounters (DIPSettings_T dip) {
   state = State8080_init ();
 
-  State8080_config_drivers_default(state, ArcadeDrivers(SPACE_ENCOUNTERS));
+  State8080_config_drivers_default(state, ArcadeDrivers(SPACE_ENCOUNTERS, dip));
   
   return state;
 }
@@ -240,10 +243,10 @@ void LOAD_ROM_seawolf (State8080_T state) {
   
 }
 
-State8080_T INIT_STATE_seawolf () {
+State8080_T INIT_STATE_seawolf (DIPSettings_T dip) {
   state = State8080_init ();
 
-  State8080_config_drivers_default(state, ArcadeDrivers(SEAWOLF));
+  State8080_config_drivers_default(state, ArcadeDrivers(SEAWOLF, dip));
   
   return state;
 }
@@ -270,10 +273,10 @@ void LOAD_ROM_m4 (State8080_T state) {
   
 }
 
-State8080_T INIT_STATE_m4 () {
+State8080_T INIT_STATE_m4 (DIPSettings_T dip) {
   state = State8080_init ();
 
-  State8080_config_drivers_default(state, ArcadeDrivers(M4));
+  State8080_config_drivers_default(state, ArcadeDrivers(M4, dip));
   
   return state;
 }
@@ -302,37 +305,37 @@ void LOAD_ROM_bowling (State8080_T state) {
   
 }
 
-State8080_T INIT_STATE_bowling () {
+State8080_T INIT_STATE_bowling (DIPSettings_T dip) {
   state = State8080_init ();
 
-  State8080_config_drivers_default(state, ArcadeDrivers(BOWLING));
+  State8080_config_drivers_default(state, ArcadeDrivers(BOWLING, dip));
   
   return state;
 }
 
 // -------------------------------------------------------------------
 
-void INITIALIZE_PROCESSOR(State8080_T state, ROM rom) {
+void INITIALIZE_PROCESSOR(State8080_T state, ROM rom, DIPSettings_T dip) {
   switch (rom) {
   case INVADERS:
-    state = INIT_STATE_invaders ();
+    state = INIT_STATE_invaders (dip);
 
     LOAD_ROM_invaders (state);  
     break;
   case BALLOON_BOMBER:
-    state = INIT_STATE_ballbomb ();
+    state = INIT_STATE_ballbomb (dip);
 
     LOAD_ROM_ballbomb (state);
     
     break;
   case SEAWOLF:
-    state = INIT_STATE_seawolf ();
+    state = INIT_STATE_seawolf (dip);
 
     LOAD_ROM_seawolf (state);
 
     break;
   case GUNFIGHT:
-    state = INIT_STATE_gunfight ();
+    state = INIT_STATE_gunfight (dip);
 
     LOAD_ROM_gunfight (state);
 
@@ -679,8 +682,8 @@ void * processorThread(void *x) {
   pthread_exit(NULL);
 }
 
-void RUN_EMULATOR(ROM rom) {
-  INITIALIZE_PROCESSOR(state, rom);
+void RUN_EMULATOR(ROM rom, DIPSettings_T dip) {
+  INITIALIZE_PROCESSOR(state, rom, dip);
 
   INIT_AUDIO (); // sound
 

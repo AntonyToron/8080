@@ -10,8 +10,12 @@
 #include <wx/menu.h>
 #include <wx/sizer.h>
 #include <wx/filename.h>
+#include "Types.h"
 #include "arcade_machine.h"
 #include "emulator.h"
+extern "C" {
+  #include "Drivers.h"
+}
 
 // constructs Emualator and provides entry point
 IMPLEMENT_APP(Emulator)
@@ -199,6 +203,8 @@ void MainFrame::SelectROM(wxCommandEvent & event) {
   printf ("ROM selected : %i\n", (int) rom);
   fflush (stdout);
 
-  RUN_EMULATOR(rom);
+  DIPSettings_T dip = DIP_INIT ();
+
+  RUN_EMULATOR(rom, dip);
   
 }

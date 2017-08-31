@@ -9,11 +9,6 @@
 #ifndef ARCADE_MACHINE_H
 #define ARCADE_MACHINE_H
 
-enum ROM {INVADERS, BALLOON_BOMBER, GUNFIGHT, SPACE_ENCOUNTERS, SEAWOLF, M4,
-          BOWLING};
-
-typedef enum ROM ROM;
-
-void RUN_EMULATOR(ROM rom);
+void RUN_EMULATOR(ROM rom, DIPSettings_T dip);
 
 #endif
