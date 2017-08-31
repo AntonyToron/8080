@@ -10,12 +10,16 @@
 #include <wx/menu.h>
 #include <wx/sizer.h>
 #include <wx/filename.h>
+#include <wx/spinbutt.h>
+#include <wx/spinctrl.h>
+#include <map>
 #include "Types.h"
 #include "arcade_machine.h"
 #include "emulator.h"
 extern "C" {
   #include "Drivers.h"
 }
+
 
 // constructs Emualator and provides entry point
 IMPLEMENT_APP(Emulator)
@@ -131,11 +135,22 @@ MainFrame::MainFrame(const wxChar *title, int x, int y, int width, int height)
 	     wxALIGN_CENTER | wxSHAPED | wxLEFT | wxTOP,
 	     60);
 
-  sizer->Add(
+
+  wxBoxSizer *buttonSizer = new wxBoxSizer(wxHORIZONTAL);
+  buttonSizer->Add(
 	     new wxButton(this, SELECT_ROM_BUTTON, "Select ROM"),
 	     0,
-	     wxALIGN_CENTER | wxALL,
-	     40);
+	     wxALL | wxALIGN_CENTER,
+	     20);
+  buttonSizer->Add(
+	     new wxButton(this, DIPSWITCH_BUTTON, "Game Options (Dipswitch)"),
+	     0,
+	     wxALL | wxALIGN_CENTER,
+	     20);
+  sizer->Add(buttonSizer,
+	     0,
+	     wxALIGN_CENTER,
+	     0);
   
   SetSizer(sizer);
 
@@ -144,7 +159,12 @@ MainFrame::MainFrame(const wxChar *title, int x, int y, int width, int height)
 
   // DEFAULT
   rom = INVADERS;
-  
+
+  // SETUP DIPSWITCH SETTINGS
+  DIPS[INVADERS] = DIP_INIT();
+  DIPS[GUNFIGHT] = DIP_INIT();
+  DIPS[SEAWOLF] = DIP_INIT();
+  DIPS[BALLOON_BOMBER] = DIP_INIT();
 
   // can set working directory via wxGetCwd() into wxSetWorkingDirectory
 }
@@ -162,6 +182,7 @@ EVT_MENU (BASIC_EXIT, MainFrame::OnExit)
 EVT_MENU (BASIC_ABOUT, MainFrame::OnAbout)
 EVT_MENU (BASIC_OPEN, MainFrame::OnOpenFile)
 EVT_BUTTON(SELECT_ROM_BUTTON, MainFrame::SelectROM)
+EVT_BUTTON(DIPSWITCH_BUTTON, MainFrame::OpenDipswitch)
 END_EVENT_TABLE()
 
 /*
@@ -203,8 +224,100 @@ void MainFrame::SelectROM(wxCommandEvent & event) {
   printf ("ROM selected : %i\n", (int) rom);
   fflush (stdout);
 
-  DIPSettings_T dip = DIP_INIT ();
-
+  DIPSettings_T dip = DIPS[rom];
+  
   RUN_EMULATOR(rom, dip);
+  
+}
+
+DipswitchDialog::DipswitchDialog(wxWindow * parent, wxWindowID id,
+				 const wxString & title, const wxPoint & position,
+				 const wxSize & size, long style)
+  : wxDialog(parent, id, title, position, size, style) {
+
+
+  
+  wxBoxSizer *bank1 = new wxBoxSizer(wxHORIZONTAL);
+  for (int i = 1; i < 9; i++) {
+    char buffer [50];
+    sprintf(buffer, "DIP_%d", i);
+    wxString title(buffer);
+    wxString value("0");
+    wxSpinCtrl * dipswitch = new wxSpinCtrl(this, -1, value, wxDefaultPosition,
+					    wxSize(45, 30),
+					    wxSP_ARROW_KEYS|wxALIGN_RIGHT,
+					    0, // min
+					    1, // max
+					    0, // initial
+					    title);
+    
+    bank1->Add(dipswitch, 0, wxALL, 5);
+  }
+
+  wxBoxSizer *bank2 = new wxBoxSizer(wxHORIZONTAL);
+  for (int i = 1; i < 9; i++) {
+    char buffer [50];
+    sprintf(buffer, "DIP2_%d", i);
+    wxString title(buffer);
+    wxString value("0");
+    wxSpinCtrl * dipswitch = new wxSpinCtrl(this, -1, value, wxDefaultPosition,
+					    wxSize(45, 30),
+					    wxSP_ARROW_KEYS|wxALIGN_RIGHT,
+					    0, // min
+					    1, // max
+					    0, // initial
+					    title);
+    
+    bank2->Add(dipswitch, 0, wxALL, 5);
+  }
+
+  wxBoxSizer *sizer = new wxBoxSizer(wxVERTICAL);
+  sizer->Add(new wxStaticText(this, -1, wxString("Dipswitch bank #1")),
+	     0, wxALL, 10);
+  sizer->Add(bank1, 0, wxALL, 5);
+  sizer->Add(new wxStaticText(this, -1, wxString("Dipswitch bank #2")),
+	     0, wxALL, 10);
+  sizer->Add(bank2, 0, wxALL, 5);
+  sizer->Add(
+	     new wxButton(this, SAVE_DIPS_BUTTON, "Save settings"),
+	     0,
+	     wxALL | wxALIGN_RIGHT,
+	     20);
+  
+  this->SetSizer(sizer);
+}
+
+void DipswitchDialog::onOk(wxCommandEvent & event) {
+  printf ("Saving settings\n");
+  fflush(stdout);
+
+  
+  
+  // save settings
+  event.Skip();
+}
+
+BEGIN_EVENT_TABLE (DipswitchDialog, wxDialog)
+EVT_BUTTON(SAVE_DIPS_BUTTON, DipswitchDialog::onOk)
+END_EVENT_TABLE()
+
+DipswitchDialog::~DipswitchDialog() {
+
+}
+
+void MainFrame::OpenDipswitch(wxCommandEvent & event) {
+  DIPSettings_T dip = DIPS[rom];
+  
+  DipswitchDialog dialog (this, -1, _("Edit dipswitch settings"),
+			  wxPoint(100, 100), wxSize(450, 250));
+
+  if (dialog.ShowModal() != wxID_OK) {
+    printf ("Correctly opened modal\n");
+    fflush(stdout);
+  }
+  else {
+    printf ("Could not open modal\n");
+    fflush(stdout);
+  }
   
 }

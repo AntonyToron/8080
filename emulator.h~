@@ -11,9 +11,7 @@ enum {BASIC_EXIT = 1, BASIC_OPEN = 100, BASIC_ABOUT = 200};
 
 
 
-enum {SELECT_ROM_BUTTON = wxID_HIGHEST + 1,
-      DIPSWITCH_BUTTON = wxID_HIGHEST + 2,
-      SAVE_DIPS_BUTTON = wxID_HIGHEST + 3};
+enum {SELECT_ROM_BUTTON = wxID_HIGHEST + 1, DIPSWITCH_BUTTON = wxID_HIGHEST + 2};
 
 class Emulator : public wxApp {
  public:
