@@ -102,6 +102,15 @@ void DIP_SETTING_SET (DIPSettings_T dip, uint8_t bank, uint8_t which, uint8_t va
   }
 }
 
+uint8_t DIPS_Get (DIPSettings_T dip, uint8_t bank, uint8_t which) {
+  if (bank == 1) {
+    return dip->bank_1[which];
+  }
+  else if (bank == 2) {
+    return dip->bank_2[which];
+  }
+}
+
 uint16_t DIP_SETTINGS_DEBUG_GET (DIPSettings_T dip) {
   //printf ("debug : %i, %i\n", dip->bank_1, dip->bank_2);
   //return (dip->bank_1 << 8) | (dip->bank_2);

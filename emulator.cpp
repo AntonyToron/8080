@@ -244,6 +244,7 @@ DipswitchDialog::DipswitchDialog(wxWindow * parent, wxWindowID id,
 				 const wxSize & size, long style)
   : wxDialog(parent, id, title, position, size, style) {
 
+  DIPSettings_T currentdips = MAIN_FRAME->DIPS[MAIN_FRAME->rom];
   
   wxBoxSizer *bank1 = new wxBoxSizer(wxHORIZONTAL);
   for (int i = 1; i < 9; i++) {
@@ -259,6 +260,7 @@ DipswitchDialog::DipswitchDialog(wxWindow * parent, wxWindowID id,
 					    0, // initial
 					    title);
     
+    dipswitch->SetValue(DIPS_Get(currentdips, 1, i - 1));
     bank1->Add(dipswitch, 0, wxALL, 5);
     currentDIPS_bank1[i - 1] = dipswitch;
   }
@@ -277,6 +279,7 @@ DipswitchDialog::DipswitchDialog(wxWindow * parent, wxWindowID id,
 					    0, // initial
 					    title);
     
+    dipswitch->SetValue(DIPS_Get(currentdips, 2, i - 1));
     bank2->Add(dipswitch, 0, wxALL, 5);
     currentDIPS_bank2[i - 1] = dipswitch;
   }

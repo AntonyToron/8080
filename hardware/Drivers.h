@@ -24,6 +24,8 @@ DIPSettings_T DIP_INIT ();
 
 void DIP_SETTING_SET (DIPSettings_T dip, uint8_t bank, uint8_t which, uint8_t value);
 
+uint8_t DIPS_Get (DIPSettings_T dip, uint8_t bank, uint8_t which);
+
 uint16_t DIP_SETTINGS_DEBUG_GET (DIPSettings_T dip);
 
 void DIP_SETTINGS_DEBUG_PRINT (DIPSettings_T dip);

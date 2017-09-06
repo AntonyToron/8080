@@ -613,6 +613,13 @@ void * hardwareThread(void *x) {
     factor of 2 missing elsewhere in calculations that could cause this halving
     to produce close to correct results.
 
+    EDIT:
+    The game runs as expected when the value 16ms was cut in half to 8ms. The
+    likely reasoning for this is that hardware interrupts do occur at 16ms
+    times, but the two vertical blank and middle screen interrupts occur
+    alternatingly 8ms apart from eachother. Each individually occurs at 16ms
+    rates.
+
    */
   timer.it_interval.tv_usec = 8335; //8000;
 
@@ -637,7 +644,11 @@ void * processorThread(void *x) {
     // timer, in batches. This means that approximately the same amount of
     // instructions that would be executed during the 60hz window on the 8080
     // are emulated similarly here.
-    if ((cyclesExecuted * clock_time_milliseconds) > 16.67) {
+
+    // THIS VALUE BELOW IS NOW AT : 8.35
+    // The reasoning for this is to sync this up with the rate at which
+    // the hardware interrupts are occuring at.
+    if ((cyclesExecuted * clock_time_milliseconds) > 8.35) { // 16.67
       // when too many instructions happen before interrupt,
       // pause execution of instructions until a hardware interrupt should
       // happen
