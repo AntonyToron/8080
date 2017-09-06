@@ -18,7 +18,7 @@ void ArcadeMachine_free (ArcadeMachine_T am_ports);
 
 void INITIALIZE_IO (Drivers_T drivers, ROM rom, ArcadeMachine_T current_am);
 
-void APPLY_DIP_SETTINGS (ArcadeMachine_T am, DIPSettings_T dip);
+void APPLY_DIP_SETTINGS (ArcadeMachine_T am, DIPSettings_T dip, ROM rom);
 
 DIPSettings_T DIP_INIT ();
 

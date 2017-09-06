@@ -69,8 +69,26 @@ ArcadeMachine_T ArcadeMachine_INIT (ROM rom) {
   return am;
 }
 
-void APPLY_DIP_SETTINGS (ArcadeMachine_T am, DIPSettings_T dip) {
-  am->dip = dip;
+void APPLY_DIP_SETTINGS (ArcadeMachine_T am, DIPSettings_T dip, ROM rom) {
+  
+  // AS OF NOW, DON'T NEED TO ASSIGN THIS, CAN ASSIGN A COPY LATER (NOT THE
+  // ORIGINAL POINTER SINCE THE REFERENCES TO IT WILL MESS UP IN EMULATOR)
+  //am->dip = dip;
+
+  // change read ports based on individual ROMS
+  switch (rom) {
+  case INVADERS:
+    printf ("Initializing DIPS for INVADERS\n");
+
+    // bits 0-1 = dips 1-2
+    am->port2 |= ((dip->bank_1[1 - 1] << 1) | (dip->bank_1[2 - 1]));
+    // bit 3 = dip 6
+    am->port2 |= (dip->bank_1[6 - 1] << 3); 
+    // bit 7 = dip 4
+    am->port2 |= (dip->bank_1[4 - 1] << 7); 
+    
+    break;
+  }
 }
 
 void DIP_SETTING_SET (DIPSettings_T dip, uint8_t bank, uint8_t which, uint8_t value) {
@@ -126,7 +144,9 @@ DIPSettings_T DIP_INIT () {
 }
 
 void ArcadeMachine_free (ArcadeMachine_T am) {
-  free(am->dip);
+  if (am->dip != NULL) {
+    //free(am->dip);
+  }
   
   free(am);
 }

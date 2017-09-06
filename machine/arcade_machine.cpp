@@ -86,7 +86,7 @@ Drivers_T ArcadeDrivers(ROM rom, DIPSettings_T dip) {
   am = ArcadeMachine_INIT (rom);
   INITIALIZE_IO (drivers, rom, am);
 
-  APPLY_DIP_SETTINGS(am, dip);
+  APPLY_DIP_SETTINGS(am, dip, rom);
    
   return drivers;
 }
