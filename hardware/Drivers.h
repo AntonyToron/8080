@@ -24,6 +24,10 @@ DIPSettings_T DIP_INIT ();
 
 void DIP_SETTING_SET (DIPSettings_T dip, uint8_t bank, uint8_t which, uint8_t value);
 
+uint16_t DIP_SETTINGS_DEBUG_GET (DIPSettings_T dip);
+
+void DIP_SETTINGS_DEBUG_PRINT (DIPSettings_T dip);
+
 void ARCADE_CONTROL (ArcadeMachine_T am, Control control, ROM rom);
 
 uint8_t am_ports_get3(ArcadeMachine_T am_ports);

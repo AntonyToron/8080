@@ -1,5 +1,5 @@
 /*
-  File name : Emulator.h
+  File name : emulator.h
   Author : Antony Toron
 
   Description : This defines the interface for the emulator and declares
@@ -11,7 +11,9 @@ enum {BASIC_EXIT = 1, BASIC_OPEN = 100, BASIC_ABOUT = 200};
 
 
 
-enum {SELECT_ROM_BUTTON = wxID_HIGHEST + 1, DIPSWITCH_BUTTON = wxID_HIGHEST + 2};
+enum {SELECT_ROM_BUTTON = wxID_HIGHEST + 1,
+      DIPSWITCH_BUTTON = wxID_HIGHEST + 2,
+      SAVE_DIPS_BUTTON = wxID_HIGHEST + 3};
 
 class Emulator : public wxApp {
  public:
@@ -43,6 +45,11 @@ class DipswitchDialog: public wxDialog {
 
  private:
   void onOk(wxCommandEvent & event);
+
+  //wxSpinCtrl * currentDIPS_bank1[8];
+  //wxSpinCtrl * currentDIPS_bank2[8];
+
+  //ROM rom;
 
   DECLARE_EVENT_TABLE()
 };

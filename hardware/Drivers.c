@@ -17,8 +17,10 @@
 // -------------------- ARCADE MACHINE ---------------------
 
 struct DIPSettings {
-  uint8_t bank_1; // 1 = ON, 0 = OFF
-  uint8_t bank_2;
+  //uint8_t bank_1; // 1 = ON, 0 = OFF
+  //uint8_t bank_2;
+  uint8_t bank_1[8];
+  uint8_t bank_2[8];
 };
 
 struct ArcadeMachine {
@@ -73,17 +75,52 @@ void APPLY_DIP_SETTINGS (ArcadeMachine_T am, DIPSettings_T dip) {
 
 void DIP_SETTING_SET (DIPSettings_T dip, uint8_t bank, uint8_t which, uint8_t value) {
   if (bank == 1) {
-    dip->bank_1 &= (value << which);
-    //dip->bank_1[which] = value;
+    //dip->bank_1 &= (value << which);
+    dip->bank_1[which] = value;
   }
   else if (bank == 2) {
-    dip->bank_2 &= (value << which);
-    //dip->bank_2[which] = value;
+    //dip->bank_2 &= (value << which);
+    dip->bank_2[which] = value;
   }
+}
+
+uint16_t DIP_SETTINGS_DEBUG_GET (DIPSettings_T dip) {
+  //printf ("debug : %i, %i\n", dip->bank_1, dip->bank_2);
+  //return (dip->bank_1 << 8) | (dip->bank_2);
+  uint16_t settings = 0;
+  for (int i = 0; i < 8; i++) {
+    /*if (dip->bank_1[i] != 0) {
+      printf ("not 0 : %i\n", i);
+    }
+    if (dip->bank_2[i] != 0) {
+      printf ("not 0 (2) : %i\n", i);
+      }*/
+    settings &= dip->bank_1[i] << (15 - i);
+    settings &= dip->bank_2[i] << (7 - i);
+  }
+  return settings;
+}
+
+void DIP_SETTINGS_DEBUG_PRINT (DIPSettings_T dip) {
+  printf ("Bank 1: ");
+  for (int i = 0; i < 8; i++) {
+    printf ("%i", dip->bank_1[i]);
+  }
+  printf ("\nBank 2: ");
+  for (int i = 0; i < 8; i++) {
+    printf ("%i", dip->bank_2[i]);
+  }
+  printf ("\n");
+  fflush(stdout);
 }
 
 DIPSettings_T DIP_INIT () {
   DIPSettings_T dip = (struct DIPSettings *) malloc (sizeof (struct DIPSettings));
+
+  for (int i = 0; i < 8; i++) {
+    dip->bank_1[i] = 0;
+    dip->bank_2[i] = 0;
+  }
   
   return dip;
 }

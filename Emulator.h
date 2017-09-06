@@ -1,5 +1,5 @@
 /*
-  File name : Emulator.h
+  File name : emulator.h
   Author : Antony Toron
 
   Description : This defines the interface for the emulator and declares
@@ -45,6 +45,9 @@ class DipswitchDialog: public wxDialog {
 
  private:
   void onOk(wxCommandEvent & event);
+
+  wxSpinCtrl * currentDIPS_bank1[8];
+  wxSpinCtrl * currentDIPS_bank2[8];
 
   DECLARE_EVENT_TABLE()
 };

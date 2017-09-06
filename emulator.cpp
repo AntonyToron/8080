@@ -16,6 +16,7 @@
 #include "Types.h"
 #include "arcade_machine.h"
 #include "emulator.h"
+#include <inttypes.h>
 extern "C" {
   #include "Drivers.h"
 }
@@ -24,15 +25,20 @@ extern "C" {
 // constructs Emualator and provides entry point
 IMPLEMENT_APP(Emulator)
 
+MainFrame * MAIN_FRAME;
+
 // THIS IS CALLED ON STARTUP
 bool Emulator::OnInit() {
   // _T stands for text, turns literal into a Unicode wide character literal
   // if compiling with unicode support
-  MainFrame *frame = new MainFrame(_T("8080_EMU"), 50, 50, 500, 700);
-
+  //MainFrame *frame = new MainFrame(_T("8080_EMU"), 50, 50, 500, 700);
+  MAIN_FRAME = new MainFrame(_T("8080_EMU"), 50, 50, 500, 700);
+  
   // show the window
-  frame->Show(true); // inherited from wxWindow
-  SetTopWindow(frame);
+  MAIN_FRAME->Show(true); // inherited from wxWindow
+  SetTopWindow(MAIN_FRAME);
+  //frame->Show(true);
+  //SetTopWindow(frame);
   return true;
 }
 
@@ -225,6 +231,9 @@ void MainFrame::SelectROM(wxCommandEvent & event) {
   fflush (stdout);
 
   DIPSettings_T dip = DIPS[rom];
+
+  printf ("Starting ROM with following dipswitch settings : \n");
+  DIP_SETTINGS_DEBUG_PRINT(dip);
   
   RUN_EMULATOR(rom, dip);
   
@@ -234,7 +243,6 @@ DipswitchDialog::DipswitchDialog(wxWindow * parent, wxWindowID id,
 				 const wxString & title, const wxPoint & position,
 				 const wxSize & size, long style)
   : wxDialog(parent, id, title, position, size, style) {
-
 
   
   wxBoxSizer *bank1 = new wxBoxSizer(wxHORIZONTAL);
@@ -252,6 +260,7 @@ DipswitchDialog::DipswitchDialog(wxWindow * parent, wxWindowID id,
 					    title);
     
     bank1->Add(dipswitch, 0, wxALL, 5);
+    currentDIPS_bank1[i - 1] = dipswitch;
   }
 
   wxBoxSizer *bank2 = new wxBoxSizer(wxHORIZONTAL);
@@ -269,6 +278,7 @@ DipswitchDialog::DipswitchDialog(wxWindow * parent, wxWindowID id,
 					    title);
     
     bank2->Add(dipswitch, 0, wxALL, 5);
+    currentDIPS_bank2[i - 1] = dipswitch;
   }
 
   wxBoxSizer *sizer = new wxBoxSizer(wxVERTICAL);
@@ -291,9 +301,17 @@ void DipswitchDialog::onOk(wxCommandEvent & event) {
   printf ("Saving settings\n");
   fflush(stdout);
 
-  
+  DIPSettings_T dip = MAIN_FRAME->DIPS[MAIN_FRAME->rom];
+  for (int i = 0; i < 8; i++) {
+    DIP_SETTING_SET(dip, 1, i, currentDIPS_bank1[i]->GetValue());
+    DIP_SETTING_SET(dip, 2, i, currentDIPS_bank2[i]->GetValue());
+  }
   
   // save settings
+  //DIP_SETTINGS_DEBUG_PRINT(dip);
+  //DIP_SETTINGS_DEBUG_PRINT(MAIN_FRAME->DIPS[MAIN_FRAME->rom]);
+  
+  
   event.Skip();
 }
 
