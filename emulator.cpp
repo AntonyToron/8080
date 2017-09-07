@@ -423,6 +423,21 @@ void MainFrame::saveDipswitchSettings() {
   }
 }
 
+void getDipswitchDescription(char * caption, ROM rom) {
+  switch (rom) {
+  case INVADERS:
+    strcpy(caption,
+	   "LIVES: (dips 1-2)\n - 3* \t OFF OFF \n - 4  \t ON OFF \n - 5  \t OFF ON \n"
+	   " - 6  \t ON ON \n BONUS LIFE: (dip 3) \n - 1000  \t ON \n - 1500* \t OFF \n"
+	   "COIN INFO: (dip 4) \n - Off  \t ON \n - On* \t OFF\n");
+    break;
+  case SEAWOLF:
+    strcpy(caption,
+	   "TIME: (dips 1-2)\n - 61* \t ON ON");
+     
+  }
+}
+
 DipswitchDialog::DipswitchDialog(wxWindow * parent, wxWindowID id,
 				 const wxString & title, const wxPoint & position,
 				 const wxSize & size, long style)
@@ -469,6 +484,11 @@ DipswitchDialog::DipswitchDialog(wxWindow * parent, wxWindowID id,
   }
 
   wxBoxSizer *sizer = new wxBoxSizer(wxVERTICAL);
+  char captionBuffer[2000];
+  getDipswitchDescription(captionBuffer, MAIN_FRAME->rom);
+  wxString caption = wxString(captionBuffer);
+
+  sizer->Add(new wxStaticText(this, -1, caption), 0, wxALL, 10);
   sizer->Add(new wxStaticText(this, -1, wxString("Dipswitch bank #1")),
 	     0, wxALL, 10);
   sizer->Add(bank1, 0, wxALL, 5);
@@ -514,7 +534,7 @@ void MainFrame::OpenDipswitch(wxCommandEvent & event) {
   DIPSettings_T dip = DIPS[rom];
   
   DipswitchDialog dialog (this, -1, _("Edit dipswitch settings"),
-			  wxPoint(100, 100), wxSize(450, 250));
+			  wxPoint(100, 100), wxSize(450, 500));
 
   if (dialog.ShowModal() != wxID_OK) {
     printf ("Correctly opened modal\n");
