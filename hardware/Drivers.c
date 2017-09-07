@@ -64,6 +64,17 @@ ArcadeMachine_T ArcadeMachine_INIT (ROM rom) {
     am->port3 = 0x00;
     am->port5 = 0x00;
     break;
+  case SEAWOLF:
+    am->shift_registers[0] = 0;
+    am->shift_registers[1] = 0;
+    am->offset = 0;
+    
+    am->port0 = 0x00;
+    am->port1 = 0x00;
+    am->port2 = 0x00;
+    am->port3 = 0x00;
+    am->port5 = 0x00;
+    break;
   }
   
   return am;
@@ -291,6 +302,80 @@ void invaders_write5 (uint8_t ac) {
 
 // ----------------------- END INVADERS IO --------------------- //
 
+// --------------------- SEAWOLF IO -------------------------- //
+
+// -------------------- SHIFT REGISTER ----------------------
+
+void seawolf_out3 (uint8_t ac, ArcadeMachine_T am_ports) {
+  am_ports->shift_registers[1] = am_ports->shift_registers[0];
+  am_ports->shift_registers[0] = ac;
+}
+
+void seawolf_out4 (uint8_t ac, ArcadeMachine_T am_ports) {
+  am_ports->offset = ac;
+}
+
+uint8_t seawolf_in3 (ArcadeMachine_T am_ports) {
+  uint16_t result;
+
+  result = (am_ports->shift_registers[0] << 8) | (am_ports->shift_registers[1]);
+  result >>= (8 - am_ports->offset);
+
+  return result & 0xff;
+}
+
+void seawolf_write4 (uint8_t ac) {
+  seawolf_out4(ac, CURRENT_AM);
+}
+
+void seawolf_write3 (uint8_t ac) {
+  seawolf_out3(ac, CURRENT_AM);
+}
+
+uint8_t seawolf_read3 () {
+  return seawolf_in3(CURRENT_AM);
+}
+
+
+// ----------------------- END SEAWOLF IO --------------------- //
+
+// --------------------- GUNFIGHT IO -------------------------- //
+
+// -------------------- SHIFT REGISTER ----------------------
+
+void gunfight_out4 (uint8_t ac, ArcadeMachine_T am_ports) {
+  am_ports->shift_registers[1] = am_ports->shift_registers[0];
+  am_ports->shift_registers[0] = ac;
+}
+
+void gunfight_out2 (uint8_t ac, ArcadeMachine_T am_ports) {
+  am_ports->offset = ac;
+}
+
+uint8_t gunfight_in3 (ArcadeMachine_T am_ports) {
+  uint16_t result;
+
+  result = (am_ports->shift_registers[0] << 8) | (am_ports->shift_registers[1]);
+  result >>= (8 - am_ports->offset);
+
+  return result & 0xff;
+}
+
+void gunfight_write4 (uint8_t ac) {
+  gunfight_out4(ac, CURRENT_AM);
+}
+
+void gunfight_write2 (uint8_t ac) {
+  gunfight_out2(ac, CURRENT_AM);
+}
+
+uint8_t gunfight_read3 () {
+  return gunfight_in3(CURRENT_AM);
+}
+
+
+// ----------------------- END GUNFIGHT IO --------------------- //
+
 // ---------------------- DRIVER INITIALIZATION ---------------- //
 
 void INITIALIZE_IO (Drivers_T drivers, ROM rom, ArcadeMachine_T am) {
@@ -309,6 +394,22 @@ void INITIALIZE_IO (Drivers_T drivers, ROM rom, ArcadeMachine_T am) {
     config_drivers_in_port(drivers, &invaders_read0, 0);
     config_drivers_in_port(drivers, &invaders_read1, 1);
     config_drivers_in_port(drivers, &invaders_read2, 2);
+    break;
+  case SEAWOLF:
+    // OUT
+    config_drivers_out_port(drivers, &seawolf_write3, 3); // shift registers
+    config_drivers_out_port(drivers, &seawolf_write4, 4);
+    
+    // IN
+    config_drivers_in_port(drivers, &seawolf_read3, 3);
+    break;
+  case GUNFIGHT:
+    // OUT
+    config_drivers_out_port(drivers, &gunfight_write2, 2); // shift registers
+    config_drivers_out_port(drivers, &gunfight_write4, 4);
+    
+    // IN
+    config_drivers_in_port(drivers, &gunfight_read3, 3);
     break;
   default:
     printf ("Not performing any specific IO hookup\n");

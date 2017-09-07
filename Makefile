@@ -6,7 +6,7 @@
 # Macros
 CC = gcc
 CPP = g++
-CFLAGS = -g
+CFLAGS = -g -O3
 #CFLAGS = -g -D CPU_DIAGNOSTIC
 #CFLAGS = -D INSTRUCTION_DEBUGGING
 #CFLAGS = -pg
@@ -14,11 +14,19 @@ CFLAGS = -g
 # CFLAGS = -g
 # CFLAGS = -D NDEBUG
 # CFLAGS = -D NDEBUG -O
-CPPFLAGS = -std=c++11 -g
+CPPFLAGS = -std=c++11 -g -O3
+#SDLLIBS = /usr/lib/x86_64-linux-gnu/libSDL2_mixer.a /usr/lib/x86_64-linux-gnu/libSDL2.a
+#SDLLIBS = -Wl, -Bstatic $(shell sdl-config --static-libs) -Wl, -Bdynamic
+#SDLLIBS = -Wl, -Bstatic -L/usr/lib/x86_64-linux-gnu -lSDL2 -lSDL2_mixer -lpthread -lm -ldl -lasound -lm -ldl -lpthread -lpulse-simple -lpulse -lX11 -lXext -L/usr/lib/x86_64-linux-gnu -lcaca -lpthread -Wl, -Bdynamic
 CPPLIBS = -lglfw3 -lm -lGL -lGLEW -lglut -lGLU -lpthread -lX11 -lXxf86vm -lXrandr -lXi -ldl -lXinerama -lXcursor -lSDL2 -lSDL2_mixer -static-libgcc
-LIBS =  -lglfw3 -lm -lGL -lGLEW -lglut -lGLU -lpthread -lX11 -lXxf86vm -lXrandr -lXi -ldl -lXinerama -lXcursor -lSDL2 -lSDL2_mixer
+#LIBS =  -lglfw3 -lm -lGL -lGLEW -lglut -lGLU -lXxf86vm -lXrandr -lXi  -lXinerama -ldl -lXcursor $(SDLLIBS) 
+LIBS = -lglfw3 -lm -lGL -lGLEW -lglut -lGLU -lpthread -lX11 -lXxf86vm -lXrandr -lXi -ldl -lXinerama -lXcursor -lSDL2 -lSDL2_mixer
 WX_LIBS = $(shell wx-config --libs)
 WX_FLAGS = $(shell wx-config --cxxflags)
+#
+#SDLLIBS = -Wl, -Bstatic -lSDL2 -lSDL2_mixer -Wl, -Bdynamic
+
+#LIBS = $(SDLLIBS) + $(LIBS)
 INCLUDES = -I./hardware -I./utils -I./machine -I./obj
 OBJS = ./obj/CPU.o ./obj/Utils.o ./obj/Drivers.o
 HEADERS = ./machine/CPU.h ./utils/Utils.h ./hardware/Drivers.h ./machine/arcade_machine.h ./machine/Types.h

@@ -340,6 +340,12 @@ void INITIALIZE_PROCESSOR(State8080_T state, ROM rom, DIPSettings_T dip) {
     LOAD_ROM_gunfight (state);
 
     break;
+  case SPACE_ENCOUNTERS:
+    state = INIT_STATE_encounters (dip);
+
+    LOAD_ROM_encounters (state);
+
+    break;
   default:
     fprintf (stderr, "This ROM is not supported\n");
     exit(0);

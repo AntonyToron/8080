@@ -241,6 +241,9 @@ MainFrame::MainFrame(const wxChar *title, int x, int y, int width, int height)
   checkIfDipswitchSettingsExist();
 
   // can set working directory via wxGetCwd() into wxSetWorkingDirectory
+
+  // style
+  //SetBackgroundColour(wxColour(* wxBLACK));
 }
 
 
