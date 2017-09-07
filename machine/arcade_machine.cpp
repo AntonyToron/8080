@@ -383,9 +383,20 @@ void populateWindowFromMemory() {
 
 void render() {
   // ADDS A LOCK ON RENDERING
-  std::unique_lock<std::mutex> lk(m2);
-  auto now = std::chrono::system_clock::now();
-  cv.wait_until(lk, now + std::chrono::milliseconds(16), [](){return hardware_interrupt;});
+  // std::unique_lock<std::mutex> lk(m2);
+  //auto now = std::chrono::system_clock::now();
+  //cv.wait_until(lk, now + std::chrono::milliseconds(16), [](){return hardware_interrupt;});
+
+  /*
+    QUICK NOTE ON RENDERING:
+
+    https://stackoverflow.com/questions/5829881/avoid-waiting-on-swapbuffers
+    https://askubuntu.com/questions/331499/xorg-compiz-is-using-massive-amounts-of-cpu-what-to-do
+
+    
+   */
+  
+  usleep(16000);
 
   // POPULATE WINDOW WITH IN-MEMORY VIDEO RAM, (effective 60hz draw)
   populateWindowFromMemory();
@@ -405,51 +416,58 @@ void render() {
 uint8_t port3_previous = 0x00;
 uint8_t port5_previous = 0x00;
 
-void playSoundEffects() {
-  // check ports 3 and 5 for sound
-  uint8_t port3_current = am_ports_get3(am);
-  uint8_t port5_current = am_ports_get5(am);
-
-  if (port3_current != port3_previous) {
-    if ((port3_current & 0x02) && !(port3_previous & 0x02)) {
-      playSoundEffect("shot");
+void playSoundEffects(ROM rom) {
+  switch (rom) {
+  case INVADERS:
+    {
+    // check ports 3 and 5 for sound
+    uint8_t port3_current = am_ports_get3(am);
+    uint8_t port5_current = am_ports_get5(am);
+    
+    if (port3_current != port3_previous) {
+      if ((port3_current & 0x02) && !(port3_previous & 0x02)) {
+	playSoundEffect("shot");
+      }
+      if ((port3_current & 0x04) && !(port3_previous & 0x04)) {
+	playSoundEffect("flash");
+      }
+      if ((port3_current & 0x08) && !(port3_previous & 0x08)) {
+	playSoundEffect("invaderkilled");
+      }
+      
+      // UFO, repeats
+      if ((port3_current & 0x01) && !(port3_previous & 0x01)) {
+	playSoundEffect("UFO_on");
+      }
+      if (!(port3_current & 0x01) && (port3_previous & 0x01)) {
+	playSoundEffect("UFO_off");
+      }
+      
     }
-    if ((port3_current & 0x04) && !(port3_previous & 0x04)) {
-      playSoundEffect("flash");
+    if (port5_current != port5_previous) {
+      if ((port5_current & 0x01) && !(port5_previous & 0x02)) {
+	playSoundEffect("mov1");
+      }
+      if ((port5_current & 0x02) && !(port5_previous & 0x02)) {
+	playSoundEffect("mov2");
+      }
+      if ((port5_current & 0x04) && !(port5_previous & 0x04)) {
+	playSoundEffect("mov3");
+      }
+      if ((port5_current & 0x08) && !(port5_previous & 0x08)) {
+	playSoundEffect("mov4");
+      }
+      if ((port5_current & 0x10) && !(port5_previous & 0x10)) {
+	playSoundEffect("UFO_hit");
+      }
     }
-    if ((port3_current & 0x08) && !(port3_previous & 0x08)) {
-      playSoundEffect("invaderkilled");
-    }
-
-    // UFO, repeats
-    if ((port3_current & 0x01) && !(port3_previous & 0x01)) {
-      playSoundEffect("UFO_on");
-    }
-    if (!(port3_current & 0x01) && (port3_previous & 0x01)) {
-      playSoundEffect("UFO_off");
+    
+    port3_previous = port3_current;
+    port5_previous = port5_current;
+    break;
     }
     
   }
-  if (port5_current != port5_previous) {
-    if ((port5_current & 0x01) && !(port5_previous & 0x02)) {
-      playSoundEffect("mov1");
-    }
-    if ((port5_current & 0x02) && !(port5_previous & 0x02)) {
-      playSoundEffect("mov2");
-    }
-    if ((port5_current & 0x04) && !(port5_previous & 0x04)) {
-      playSoundEffect("mov3");
-    }
-    if ((port5_current & 0x08) && !(port5_previous & 0x08)) {
-      playSoundEffect("mov4");
-    }
-    if ((port5_current & 0x10) && !(port5_previous & 0x10)) {
-      playSoundEffect("UFO_hit");
-    }
-  }
-  
-  port3_previous = port3_current;
-  port5_previous = port5_current; 
 }
 
 #ifdef INTERRUPT_TIMING
@@ -530,6 +548,9 @@ void turnOffTimer() {
 void * graphicsThread(void *x) {
   printf ("Hello from graphics thread\n");
 
+  ROM * rom = (ROM *) x;
+  printf ("Playing ROM : %i\n", (int) *rom);
+
   if (!glfwInit())
     exit(1);
 
@@ -550,7 +571,7 @@ void * graphicsThread(void *x) {
     render();
 
     // register sound effects
-    playSoundEffects();
+    playSoundEffects(*rom);
 
     glfwPollEvents();
   }
@@ -630,7 +651,7 @@ void * hardwareThread(void *x) {
 
      Proposed implementations:
      - Lock this thread until drivers unlock it (when ports for sound are
-     written to, ROM specific)
+     written to, ROM specific) (**probably should migrate to this eventually)
      - Play sound effect from drivers
      - Play sound in rendering loop
 
@@ -724,7 +745,7 @@ void RUN_EMULATOR(ROM rom, DIPSettings_T dip) {
   int x = 0, y = 0, z = 0;
 
   pthread_create(&cpu, NULL, processorThread, &x);
-  pthread_create(&graphics, NULL, graphicsThread, &y);
+  pthread_create(&graphics, NULL, graphicsThread, &rom);
   pthread_create(&hardware, NULL, hardwareThread, &z);
 
   pthread_join(cpu, NULL);
