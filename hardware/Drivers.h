@@ -28,6 +28,8 @@ uint8_t DIPS_Get (DIPSettings_T dip, uint8_t bank, uint8_t which);
 
 uint16_t DIP_SETTINGS_DEBUG_GET (DIPSettings_T dip);
 
+void DIP_SETTINGS_GET_STRING(DIPSettings_T dip, uint8_t bank, char * buffer);
+
 void DIP_SETTINGS_DEBUG_PRINT (DIPSettings_T dip);
 
 void ARCADE_CONTROL (ArcadeMachine_T am, Control control, ROM rom);

@@ -21,24 +21,42 @@ extern "C" {
   #include "Drivers.h"
 }
 
+// OS specific includes
+#ifdef _WIN32
+#include <windows.h>
+#endif
+#ifdef __linux__
 
-// constructs Emualator and provides entry point
+#endif
+
+
+// constructs Emulator and provides entry point
 IMPLEMENT_APP(Emulator)
 
 MainFrame * MAIN_FRAME;
 
+void createSaveFolder();
+
 // THIS IS CALLED ON STARTUP
 bool Emulator::OnInit() {
+  #ifdef _WIN32
+  printf ("Running on windows!\n");
+  #endif
+  #ifdef __linux__
+  printf ("Running on linux!\n");
+  #endif
+  
+  // create saves folder if not already existing
+  createSaveFolder();
+  
   // _T stands for text, turns literal into a Unicode wide character literal
   // if compiling with unicode support
-  //MainFrame *frame = new MainFrame(_T("8080_EMU"), 50, 50, 500, 700);
   MAIN_FRAME = new MainFrame(_T("8080_EMU"), 50, 50, 500, 700);
   
   // show the window
   MAIN_FRAME->Show(true); // inherited from wxWindow
   SetTopWindow(MAIN_FRAME);
-  //frame->Show(true);
-  //SetTopWindow(frame);
+  
   return true;
 }
 
@@ -172,13 +190,19 @@ MainFrame::MainFrame(const wxChar *title, int x, int y, int width, int height)
   DIPS[SEAWOLF] = DIP_INIT();
   DIPS[BALLOON_BOMBER] = DIP_INIT();
 
+  // LOAD SETTINGS INTO DIPSWITCHES IF THERE EXIST SAVES
+  checkIfDipswitchSettingsExist();
+
   // can set working directory via wxGetCwd() into wxSetWorkingDirectory
 }
 
 
 // ~ IS THE DESTRUCTOR OF THE CLASS, CALLED WHEN NECESSARY TO CALL DESTRUCTOR
 MainFrame::~MainFrame() {
+  // save dipswitch settings into file
+  printf ("Saving dipswitch settings into file\n");
 
+  saveDipswitchSettings();
 }
 
 // MAIN FRAME
@@ -237,6 +261,69 @@ void MainFrame::SelectROM(wxCommandEvent & event) {
   
   RUN_EMULATOR(rom, dip);
   
+}
+
+void MainFrame::checkIfDipswitchSettingsExist() {
+  for (auto const & x : DIPS) {
+    char buffer [50];
+    sprintf(buffer, "./save/DIP_%i.dip", (int) x.first); // key
+    //printf ("buffer : %s", buffer);
+    if (FILE *file = fopen(buffer, "r")) {
+      // read the first line (bank 1)
+      char * bank = NULL;
+      size_t len = 0;
+      
+      getline(&bank, &len, file);
+      for (int i = 0; i < 8; i++) {
+	if (bank[i] == '1') {
+	  DIP_SETTING_SET(x.second, 1, i, 1);
+	}
+	else if (bank[i] == '0') {
+	  DIP_SETTING_SET(x.second, 1, i, 0);
+	}
+      }
+      
+      // read the second line (bank 2)
+      getline(&bank, &len, file);
+      for (int i = 0; i < 8; i++) {
+	if (bank[i] == '1') {
+	  DIP_SETTING_SET(x.second, 2, i, 1);
+	}
+	else if (bank[i] == '0') {
+	  DIP_SETTING_SET(x.second, 2, i, 0);
+	}
+      }
+
+      free(bank);
+      fclose(file);
+    }
+    else {
+      printf ("No dipsettings save file exists for %i\n", x.first);
+    }
+  }
+}
+
+void MainFrame::saveDipswitchSettings() {
+  for (auto const & x : DIPS) {
+    char buffer [50];
+    sprintf(buffer, "./save/DIP_%i.dip", (int) x.first); // key
+    //printf ("buffer : %s", buffer);
+    FILE *file = fopen(buffer, "w+");
+
+    char bank[50];
+    
+    // write the first line (bank 1)
+    DIP_SETTINGS_GET_STRING(x.second, 1, bank);
+    fprintf (file, "%s", bank);
+    fprintf (file, "\n");
+    
+    // write the second line (bank 2)
+    DIP_SETTINGS_GET_STRING(x.second, 2, bank);
+    fprintf (file, "%s", bank);
+    fprintf (file, "\n");
+    
+    fclose(file);
+  }
 }
 
 DipswitchDialog::DipswitchDialog(wxWindow * parent, wxWindowID id,
@@ -323,7 +410,7 @@ EVT_BUTTON(SAVE_DIPS_BUTTON, DipswitchDialog::onOk)
 END_EVENT_TABLE()
 
 DipswitchDialog::~DipswitchDialog() {
-
+  
 }
 
 void MainFrame::OpenDipswitch(wxCommandEvent & event) {
@@ -341,4 +428,27 @@ void MainFrame::OpenDipswitch(wxCommandEvent & event) {
     fflush(stdout);
   }
   
+}
+
+void createSaveFolder() {
+  #ifdef _WIN32
+  string folderName = "./save";
+  if (CreateDirectory(folderName.c_str(), NULL) ||
+      ERROR_ALREADY_EXISTS == GetLastError()) {
+    fprintf (stdout, "Created a saves folder\n");
+  }
+  else {
+    fprintf (stderr, "Could not create a saves folder\n");
+  }
+  #endif
+  #ifdef __linux__
+  struct stat st = {0};
+  if (stat("./save", &st) == -1) {
+    // directory does not exist
+    mkdir("save", 0700);
+  }
+  else {
+    fprintf (stdout, "A save folder already exists\n");
+  }
+  #endif
 }

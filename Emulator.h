@@ -52,7 +52,7 @@ class DipswitchDialog: public wxDialog {
   DECLARE_EVENT_TABLE()
 };
 
-class MainFrame : public wxFrame {
+class MainFrame : public wxFrame { 
  public:
   MainFrame(const wxChar *title, int x, int y, int width, int height);
   ~MainFrame();
@@ -71,6 +71,8 @@ class MainFrame : public wxFrame {
   void OnExit (wxCommandEvent & event);
   void SelectROM (wxCommandEvent & event);
   void OpenDipswitch (wxCommandEvent & event);
+  void checkIfDipswitchSettingsExist();
+  void saveDipswitchSettings();
 
   DECLARE_EVENT_TABLE() // alerts compiler that this class will have event table
 };

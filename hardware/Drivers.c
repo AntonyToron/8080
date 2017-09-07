@@ -128,6 +128,31 @@ uint16_t DIP_SETTINGS_DEBUG_GET (DIPSettings_T dip) {
   return settings;
 }
 
+void DIP_SETTINGS_GET_STRING(DIPSettings_T dip, uint8_t bank, char * buffer) {
+  if (bank == 1) {
+    sprintf (buffer, "%i%i%i%i%i%i%i%i",
+	     dip->bank_1[0],
+	     dip->bank_1[1],
+	     dip->bank_1[2],
+	     dip->bank_1[3],
+	     dip->bank_1[4],
+	     dip->bank_1[5],
+	     dip->bank_1[6],
+	     dip->bank_1[7]);
+  }
+  else if (bank == 2) {
+    sprintf (buffer, "%i%i%i%i%i%i%i%i",
+	     dip->bank_2[0],
+	     dip->bank_2[1],
+	     dip->bank_2[2],
+	     dip->bank_2[3],
+	     dip->bank_2[4],
+	     dip->bank_2[5],
+	     dip->bank_2[6],
+	     dip->bank_2[7]);
+  }
+}
+
 void DIP_SETTINGS_DEBUG_PRINT (DIPSettings_T dip) {
   printf ("Bank 1: ");
   for (int i = 0; i < 8; i++) {
