@@ -150,14 +150,60 @@ MainFrame::MainFrame(const wxChar *title, int x, int y, int width, int height)
   // display main image panel with ROMS
   wxInitAllImageHandlers();
   wxBoxSizer *sizer = new wxBoxSizer(wxVERTICAL);
+
+  // banner
+  /*
+  wxBoxSizer *bannerSizer = new wxBoxSizer(wxHORIZONTAL);
+  bannerPanel = (ImagePanel *) NULL;
+  bannerPanel = new ImagePanel(this, wxT("./res/invaders_banner.png"), wxBITMAP_TYPE_PNG);
+  bannerSizer->Add(bannerPanel,
+	     0,
+	     wxALIGN_CENTER | wxSHAPED,
+	     0);
+  sizer->Add(bannerSizer,
+	     1,
+	     wxEXPAND,
+	     0);
+  */
+
+  // image panel
+  
+  wxBoxSizer *imageSizer = new wxBoxSizer(wxHORIZONTAL);
   imagePanel = (ImagePanel *) NULL;
 
-  //imagePanel = new ImagePanel(this, wxT("invaders_cabinet.jpg"), wxBITMAP_TYPE_JPEG);
+  wxBitmap bitmap;
+  bitmap.LoadFile("./res/arrow_left_small.png", wxBITMAP_TYPE_PNG);
+  left = new wxBitmapButton(this, MOVE_LEFT_BUTTON,
+					   bitmap, wxDefaultPosition, wxSize(50, 50));
+  left->Enable(false);
+  
+  imageSizer->Add(left,
+		  0,
+		  wxALIGN_CENTER | wxSHAPED,
+		  0);
+				    				     
+
   imagePanel = new ImagePanel(this, wxT("./res/space_invader_icon1.png"), wxBITMAP_TYPE_PNG);
-  sizer->Add(imagePanel,
+  imageSizer->Add(imagePanel,
 	     1,
-	     wxALIGN_CENTER | wxSHAPED | wxLEFT | wxTOP,
-	     60);
+	     wxALIGN_CENTER | wxSHAPED | wxLEFT,
+	     15);
+
+  bitmap.LoadFile("./res/arrow_right_small.png", wxBITMAP_TYPE_PNG);
+  right = new wxBitmapButton(this, MOVE_RIGHT_BUTTON,
+					   bitmap, wxDefaultPosition, wxSize(50, 50));
+  imageSizer->Add(right,
+		  0,
+		  wxALIGN_CENTER | wxSHAPED,
+		  0);
+  
+
+  
+
+  sizer->Add(imageSizer,
+	     1,
+	     wxEXPAND,
+	     0);
 
 
   wxBoxSizer *buttonSizer = new wxBoxSizer(wxHORIZONTAL);
@@ -183,6 +229,7 @@ MainFrame::MainFrame(const wxChar *title, int x, int y, int width, int height)
 
   // DEFAULT
   rom = INVADERS;
+  index = 0;
 
   // SETUP DIPSWITCH SETTINGS
   DIPS[INVADERS] = DIP_INIT();
@@ -213,6 +260,8 @@ EVT_MENU (BASIC_ABOUT, MainFrame::OnAbout)
 EVT_MENU (BASIC_OPEN, MainFrame::OnOpenFile)
 EVT_BUTTON(SELECT_ROM_BUTTON, MainFrame::SelectROM)
 EVT_BUTTON(DIPSWITCH_BUTTON, MainFrame::OpenDipswitch)
+EVT_BUTTON(MOVE_LEFT_BUTTON, MainFrame::MoveLeft)
+EVT_BUTTON(MOVE_RIGHT_BUTTON, MainFrame::MoveRight)
 END_EVENT_TABLE()
 
 /*
@@ -261,6 +310,54 @@ void MainFrame::SelectROM(wxCommandEvent & event) {
   
   RUN_EMULATOR(rom, dip);
   
+}
+
+void MainFrame::MoveLeft(wxCommandEvent & event) {
+  index--;
+  if (index < 1) {
+    left->Enable(false);
+  }
+  if (index < ROM_AMOUNT - 1) {
+    right->Enable(true);
+  }
+  changeROM(ALL_ROMS[index]);
+}
+
+void MainFrame::MoveRight(wxCommandEvent & event) {
+  index++;
+  if (index >= 1) {
+    left->Enable(true);
+  }
+  if (index >= ROM_AMOUNT - 1) {
+    right->Enable(false);
+  }
+  changeROM(ALL_ROMS[index]);
+}
+
+void MainFrame::changeROM(ROM new_rom) {
+  // change rom
+  rom = new_rom;
+
+  // change image
+  printf ("Changing ROM to %i\n", (int) rom);
+  fflush(stdout);
+
+  switch (rom) {
+  case INVADERS:
+    imagePanel->image.LoadFile("./res/space_invader_icon1.png", wxBITMAP_TYPE_PNG);
+    status->SetStatusText("Space Invaders (Taito, 1978)", 2);
+    break;
+  case SEAWOLF:
+    imagePanel->image.LoadFile("./res/seawolf.png", wxBITMAP_TYPE_PNG);
+    status->SetStatusText("Sea Wolf (Midway, 1976)", 2);
+    break;
+  case GUNFIGHT:
+    imagePanel->image.LoadFile("./res/gunfight.jpg", wxBITMAP_TYPE_JPEG);
+    status->SetStatusText("Gun Fight (Midway, 1975)", 2);
+    break;
+  }
+
+  imagePanel->Refresh();
 }
 
 void MainFrame::checkIfDipswitchSettingsExist() {

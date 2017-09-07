@@ -13,7 +13,12 @@ enum {BASIC_EXIT = 1, BASIC_OPEN = 100, BASIC_ABOUT = 200};
 
 enum {SELECT_ROM_BUTTON = wxID_HIGHEST + 1,
       DIPSWITCH_BUTTON = wxID_HIGHEST + 2,
-      SAVE_DIPS_BUTTON = wxID_HIGHEST + 3};
+      SAVE_DIPS_BUTTON = wxID_HIGHEST + 3,
+      MOVE_LEFT_BUTTON = wxID_HIGHEST + 4,
+      MOVE_RIGHT_BUTTON = wxID_HIGHEST + 5};
+
+ROM ALL_ROMS[] = {INVADERS, SEAWOLF, GUNFIGHT};
+const int ROM_AMOUNT = 3;
 
 class Emulator : public wxApp {
  public:
@@ -61,8 +66,11 @@ class MainFrame : public wxFrame {
   wxMenu *file_menu; // file dropdown menu
   wxStatusBar *status;
   ImagePanel *imagePanel;
+  wxBitmapButton  * left;
+  wxBitmapButton  * right;
 
   ROM rom;
+  int index;
   
   std::map<ROM, DIPSettings_T> DIPS;
   
@@ -70,9 +78,12 @@ class MainFrame : public wxFrame {
   void OnAbout (wxCommandEvent & event);
   void OnExit (wxCommandEvent & event);
   void SelectROM (wxCommandEvent & event);
+  void MoveLeft(wxCommandEvent & event);
+  void MoveRight(wxCommandEvent & event);
   void OpenDipswitch (wxCommandEvent & event);
   void checkIfDipswitchSettingsExist();
-  void save
+  void saveDipswitchSettings();
+  void changeROM(ROM rom);
 
   DECLARE_EVENT_TABLE() // alerts compiler that this class will have event table
 };
