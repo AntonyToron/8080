@@ -625,6 +625,26 @@ void * hardwareThread(void *x) {
 
   setitimer (ITIMER_REAL, &timer, NULL);
 
+  /* 
+     SOUND
+
+     Proposed implementations:
+     - Lock this thread until drivers unlock it (when ports for sound are
+     written to, ROM specific)
+     - Play sound effect from drivers
+     - Play sound in rendering loop
+
+     Current implementation:
+     - Play sound in rendering loop
+
+     Reason: 
+     - Not a huge difference in speed of sound delivery when playing
+     directly from drivers. That would also slow down performance of
+     the instructions, as naturally the processor itself should not be
+     performing the playing of the sound.
+
+   */
+
   printf ("Turning off hardware\n");
   pthread_exit(NULL);
 }
