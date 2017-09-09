@@ -112,7 +112,7 @@ render_func render_function(ROM rom) {
   switch (rom) {
   case INVADERS:
     return &render_invaders;
-  case LAGUNA:
+  case LAGUNA: // THIS GAME WILL NOT RUN STILL (REQUIRES PADDLE/JOYSTICK/PEDAL)
     return &render_laguna;
   default:
     return &render_invaders;
