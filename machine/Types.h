@@ -6,7 +6,7 @@
  */
 
 enum ROM {INVADERS, BALLOON_BOMBER, GUNFIGHT, SPACE_ENCOUNTERS, SEAWOLF, M4,
-          BOWLING};
+          BOWLING, LAGUNA};
 
 typedef enum ROM ROM;
 

@@ -6,7 +6,7 @@
 # Macros
 CC = gcc
 CPP = g++
-CFLAGS = -g -O3
+CFLAGS = -g #-O3
 #CFLAGS = -g -D CPU_DIAGNOSTIC
 #CFLAGS = -D INSTRUCTION_DEBUGGING
 #CFLAGS = -pg
@@ -14,7 +14,7 @@ CFLAGS = -g -O3
 # CFLAGS = -g
 # CFLAGS = -D NDEBUG
 # CFLAGS = -D NDEBUG -O
-CPPFLAGS = -std=c++11 -g -O3
+CPPFLAGS = -std=c++11 -g #-O3
 #SDLLIBS = /usr/lib/x86_64-linux-gnu/libSDL2_mixer.a /usr/lib/x86_64-linux-gnu/libSDL2.a
 #SDLLIBS = -Wl, -Bstatic $(shell sdl-config --static-libs) -Wl, -Bdynamic
 #SDLLIBS = -Wl, -Bstatic -L/usr/lib/x86_64-linux-gnu -lSDL2 -lSDL2_mixer -lpthread -lm -ldl -lasound -lm -ldl -lpthread -lpulse-simple -lpulse -lX11 -lXext -L/usr/lib/x86_64-linux-gnu -lcaca -lpthread -Wl, -Bdynamic

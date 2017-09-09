@@ -84,6 +84,7 @@ static ArcadeMachine_T am;
 Drivers_T ArcadeDrivers(ROM rom, DIPSettings_T dip) {
   Drivers_T drivers = Drivers_init();
   am = ArcadeMachine_INIT (rom);
+  printf ("About to initialize IO\n");
   INITIALIZE_IO (drivers, rom, am);
 
   APPLY_DIP_SETTINGS(am, dip, rom);
@@ -313,6 +314,36 @@ State8080_T INIT_STATE_bowling (DIPSettings_T dip) {
   return state;
 }
 
+// ------------------------- LAGUNA RACER STATE ------------------------
+
+void LOAD_ROM_laguna (State8080_T state) {
+  // load into memory
+  size_t r1, r2, r3, r4;
+  unsigned char *tn01 = readFileIntoBuffer("./ROMS/lagunar.h", &r1);
+  unsigned char *tn02 = readFileIntoBuffer("./ROMS/lagunar.g", &r2);
+  unsigned char *tn03 = readFileIntoBuffer("./ROMS/lagunar.f", &r3);
+  unsigned char *tn04 = readFileIntoBuffer("./ROMS/lagunar.e", &r4);
+
+  // load the rom
+  size_t size = 0x0800;
+  
+  State8080_load_mem(state, 0x0000, size, tn01);
+  State8080_load_mem(state, 0x0800, 0x0800 + size, tn02);
+  State8080_load_mem(state, 0x1000, 0x1000 + size, tn03);
+  State8080_load_mem(state, 0x1800, 0x1800 + size, tn04);
+
+  printf ("Successfully loaded ROM\n");
+  
+}
+
+State8080_T INIT_STATE_laguna (DIPSettings_T dip) {
+  state = State8080_init ();
+
+  State8080_config_drivers_default(state, ArcadeDrivers(LAGUNA, dip));
+  
+  return state;
+}
+
 // -------------------------------------------------------------------
 
 void INITIALIZE_PROCESSOR(State8080_T state, ROM rom, DIPSettings_T dip) {
@@ -344,6 +375,18 @@ void INITIALIZE_PROCESSOR(State8080_T state, ROM rom, DIPSettings_T dip) {
     state = INIT_STATE_encounters (dip);
 
     LOAD_ROM_encounters (state);
+
+    break;
+  case BOWLING:
+    state = INIT_STATE_bowling (dip);
+
+    LOAD_ROM_bowling (state);
+
+    break;
+  case LAGUNA:
+    state = INIT_STATE_laguna (dip);
+
+    LOAD_ROM_laguna (state);
 
     break;
   default:

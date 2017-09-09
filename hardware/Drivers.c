@@ -75,6 +75,28 @@ ArcadeMachine_T ArcadeMachine_INIT (ROM rom) {
     am->port3 = 0x00;
     am->port5 = 0x00;
     break;
+  case BOWLING:
+    am->shift_registers[0] = 0;
+    am->shift_registers[1] = 0;
+    am->offset = 0;
+    
+    am->port0 = 0x00;
+    am->port1 = 0x00;
+    am->port2 = 0x00;
+    am->port3 = 0x00;
+    am->port5 = 0x00;
+    break;
+  case LAGUNA:
+    am->shift_registers[0] = 0;
+    am->shift_registers[1] = 0;
+    am->offset = 0;
+    
+    am->port0 = 0xff;
+    am->port1 = 0x00;
+    am->port2 = 0x00;
+    am->port3 = 0x00;
+    am->port5 = 0x00;
+    break;
   }
   
   return am;
@@ -324,6 +346,29 @@ uint8_t seawolf_in3 (ArcadeMachine_T am_ports) {
   return result & 0xff;
 }
 
+// reverse shift result
+uint8_t seawolf_in0 (ArcadeMachine_T am_ports) {
+  uint16_t result = 0;
+  uint8_t reversed;
+  
+  result = (am_ports->shift_registers[0] << 8) | (am_ports->shift_registers[1]);
+  result >>= (8 - am_ports->offset);
+  result &= 0xff;
+  //reversed = result;
+
+  reversed =
+    ((result & 1) << 7) |
+    (((result >> 1) & 1) << 6) |
+    (((result >> 2) & 1) << 5) |
+    (((result >> 3) & 1) << 4) |
+    (((result >> 4) & 1) << 3) |
+    (((result >> 5) & 1) << 2) |
+    (((result >> 6) & 1) << 1) |
+    (((result >> 7) & 1) << 0);
+
+  return reversed;
+}
+
 void seawolf_write4 (uint8_t ac) {
   seawolf_out4(ac, CURRENT_AM);
 }
@@ -333,7 +378,15 @@ void seawolf_write3 (uint8_t ac) {
 }
 
 uint8_t seawolf_read3 () {
+  //printf ("Reading 3 \n");
+  //fflush(stdout);
   return seawolf_in3(CURRENT_AM);
+}
+
+uint8_t seawolf_read0 () {
+  //printf ("Reading 0 \n");
+  //fflush(stdout);
+  return seawolf_in0(CURRENT_AM);
 }
 
 
@@ -376,13 +429,129 @@ uint8_t gunfight_read3 () {
 
 // ----------------------- END GUNFIGHT IO --------------------- //
 
+// --------------------- BOWLING IO -------------------------- //
+
+// -------------------- SHIFT REGISTER ----------------------
+
+void bowling_out2 (uint8_t ac, ArcadeMachine_T am_ports) {
+  am_ports->shift_registers[1] = am_ports->shift_registers[0];
+  am_ports->shift_registers[0] = ac;
+}
+
+void bowling_out1 (uint8_t ac, ArcadeMachine_T am_ports) {
+  am_ports->offset = ac;
+}
+
+// flip all bits for bowling read 1
+uint8_t bowling_in1 (ArcadeMachine_T am_ports) {
+  uint16_t result;
+
+  result = (am_ports->shift_registers[0] << 8) | (am_ports->shift_registers[1]);
+  result >>= (8 - am_ports->offset);
+
+  return ((~result) & 0xff);
+}
+
+// reverse shift result
+uint8_t bowling_in3 (ArcadeMachine_T am_ports) {
+  uint16_t result = 0;
+  uint8_t reversed;
+  
+  result = (am_ports->shift_registers[0] << 8) | (am_ports->shift_registers[1]);
+  result >>= (8 - am_ports->offset);
+  result &= 0xff;
+  //reversed = result;
+
+  reversed =
+    ((result & 1) << 7) |
+    (((result >> 1) & 1) << 6) |
+    (((result >> 2) & 1) << 5) |
+    (((result >> 3) & 1) << 4) |
+    (((result >> 4) & 1) << 3) |
+    (((result >> 5) & 1) << 2) |
+    (((result >> 6) & 1) << 1) |
+    (((result >> 7) & 1) << 0);
+
+  return reversed;
+}
+
+void bowling_write2 (uint8_t ac) {
+  bowling_out2(ac, CURRENT_AM);
+}
+
+void bowling_write1 (uint8_t ac) {
+  bowling_out1(ac, CURRENT_AM);
+}
+
+uint8_t bowling_read3 () {
+  //printf ("Reading 3 \n");
+  //fflush(stdout);
+  return bowling_in3(CURRENT_AM);
+}
+
+uint8_t bowling_read1 () {
+  //printf ("Reading 0 \n");
+  //fflush(stdout);
+  return bowling_in1(CURRENT_AM);
+}
+
+
+// ----------------------- END BOWLING IO --------------------- //
+
+// --------------------- LAGUNA RACER IO -------------------------- //
+
+// -------------------- SHIFT REGISTER ----------------------
+
+void laguna_out3 (uint8_t ac, ArcadeMachine_T am_ports) {
+  am_ports->shift_registers[1] = am_ports->shift_registers[0];
+  am_ports->shift_registers[0] = ac;
+}
+
+void laguna_out4 (uint8_t ac, ArcadeMachine_T am_ports) {
+  am_ports->offset = ac;
+}
+
+uint8_t laguna_in3 (ArcadeMachine_T am_ports) {
+  uint16_t result;
+
+  result = (am_ports->shift_registers[0] << 8) | (am_ports->shift_registers[1]);
+  result >>= (8 - am_ports->offset);
+  
+  return result & 0xff;
+}
+
+uint8_t laguna_in0 (ArcadeMachine_T am_ports) {
+  return am_ports->port0;
+}
+
+void laguna_write4 (uint8_t ac) {
+  laguna_out4(ac, CURRENT_AM);
+}
+
+void laguna_write3 (uint8_t ac) {
+  laguna_out3(ac, CURRENT_AM);
+}
+
+uint8_t laguna_read3 () {
+  return laguna_in3(CURRENT_AM);
+}
+
+uint8_t laguna_read0 () {
+  return laguna_in0(CURRENT_AM);
+}
+
+
+// ----------------------- END LAGUNA RACER IO --------------------- //
+
 // ---------------------- DRIVER INITIALIZATION ---------------- //
 
 void INITIALIZE_IO (Drivers_T drivers, ROM rom, ArcadeMachine_T am) {
   CURRENT_AM = am;
-  
+  printf ("Initializing IO for ROM : %i\n", (int) rom);
   switch (rom) {
   case INVADERS:
+    printf ("Performing IO hookup for invaders\n");
+    fflush(stdout);
     // OUT
     config_drivers_out_port(drivers, &invaders_write4, 4); // shift registers
     config_drivers_out_port(drivers, &invaders_write2, 2);
@@ -396,14 +565,19 @@ void INITIALIZE_IO (Drivers_T drivers, ROM rom, ArcadeMachine_T am) {
     config_drivers_in_port(drivers, &invaders_read2, 2);
     break;
   case SEAWOLF:
+    printf ("Performing IO hookup for seawolf\n");
+    fflush(stdout);
     // OUT
     config_drivers_out_port(drivers, &seawolf_write3, 3); // shift registers
     config_drivers_out_port(drivers, &seawolf_write4, 4);
     
     // IN
     config_drivers_in_port(drivers, &seawolf_read3, 3);
+    config_drivers_in_port(drivers, &seawolf_read0, 0);
     break;
   case GUNFIGHT:
+    printf ("Performing IO hookup for gunfight\n");
+    fflush(stdout);
     // OUT
     config_drivers_out_port(drivers, &gunfight_write2, 2); // shift registers
     config_drivers_out_port(drivers, &gunfight_write4, 4);
@@ -411,8 +585,31 @@ void INITIALIZE_IO (Drivers_T drivers, ROM rom, ArcadeMachine_T am) {
     // IN
     config_drivers_in_port(drivers, &gunfight_read3, 3);
     break;
+  case BOWLING:
+    printf ("Performing IO hookup for bowling\n");
+    fflush(stdout);
+    // OUT
+    config_drivers_out_port(drivers, &bowling_write1, 1); // shift registers
+    config_drivers_out_port(drivers, &bowling_write2, 2);
+    
+    // IN
+    config_drivers_in_port(drivers, &bowling_read3, 3);
+    config_drivers_in_port(drivers, &bowling_read1, 1);
+    break;
+  case LAGUNA:
+    printf ("Performing IO hookup for laguna racer\n");
+    fflush(stdout);
+    // OUT
+    config_drivers_out_port(drivers, &laguna_write3, 3); // shift registers
+    config_drivers_out_port(drivers, &laguna_write4, 4);
+    
+    // IN
+    config_drivers_in_port(drivers, &laguna_read3, 3);
+    config_drivers_in_port(drivers, &laguna_read0, 0);
+    break;  
   default:
     printf ("Not performing any specific IO hookup\n");
+    fflush(stdout);
   }
 }
 

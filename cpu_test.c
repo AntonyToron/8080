@@ -46,7 +46,7 @@ Drivers_T ArcadeDrivers() {
 void LOAD_test (State8080_T state) {
   // load into memory
   size_t bytesRead;
-  unsigned char *buffer = readFileIntoBuffer("cpudiag.bin", &bytesRead);
+  unsigned char *buffer = readFileIntoBuffer("./ROMS/cpudiag.bin", &bytesRead);
 
   unsigned char jump[3] = {0xc3, 0x00, 0x01};
   State8080_load_mem(state, 0x000, (size_t) 3, jump);

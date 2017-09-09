@@ -40,6 +40,10 @@ int main (int argc, char **argv) {
   else if (strcmp(argv[1], "bowling") == 0) {
     RUN_EMULATOR(BOWLING, dip);
   }
+  else if (strcmp(argv[1], "laguna") == 0) {
+    printf ("You have selected laguna\n");
+    RUN_EMULATOR(LAGUNA, dip);
+  }
   else {
     fprintf (stderr, "This ROM is not supported\n");
     exit(1);
