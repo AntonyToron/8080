@@ -5,6 +5,9 @@
   Description : Defines common types
  */
 
+#ifndef TYPES_HEADER
+#define TYPES_HEADER
+
 enum ROM {INVADERS, BALLOON_BOMBER, GUNFIGHT, SPACE_ENCOUNTERS, SEAWOLF, M4,
           BOWLING, LAGUNA};
 
@@ -19,3 +22,5 @@ typedef enum Control Control;
 typedef struct ArcadeMachine * ArcadeMachine_T;
 
 typedef struct DIPSettings * DIPSettings_T;
+
+#endif

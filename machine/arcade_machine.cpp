@@ -33,10 +33,12 @@ extern "C" {
   #include "Drivers.h"
 }
 
+
 #include <string.h>
 #include <thread>
 //#include <GL/glut.h>
 #include <GLFW/glfw3.h>
+#include "Graphics.h"
 
 const int RGB_ON = 0xFFFFFFFF;
 const int RGB_OFF = 0x00000000;
@@ -397,70 +399,6 @@ void INITIALIZE_PROCESSOR(State8080_T state, ROM rom, DIPSettings_T dip) {
 
 // ----------------------- MACHINE INFORMATION --------------------
 
-void populateWindowFromMemory() {
-  int i, j;
-  
-  // 1-bit space invaders video into window
-  // ASSUME SPACE INVADERS FOR NOW
-  uint16_t startVideoMemory = 0x2400;
-  uint8_t *videoMemory = pointerToMemoryAt(state, startVideoMemory);
-  
-  // copy into window
-  for (i = 0; i < 224; i++) {
-    for (j = 0; j < 256; j+=8) {
-      int p;
-      // Read first 1-bit pixel, divide by 8 bc 8 pixels in byte
-      unsigned char pix = videoMemory[(i * (256/8)) + j/8];
-
-      // 8 output vertical pixels --> vertical flip, j start at last line
-      int offset = (255-j)*(224*4) + (i*4);
-      unsigned int *p1 = (unsigned int *)(&windowPixels[offset]);
-      for (p = 0; p < 8; p++) {
-	if (0 != (pix & (1 << p))) { // white pixel
-	  *p1 = RGB_ON;
-	  
-	  fflush(stdout);
-	}
-	else
-	  *p1 = RGB_OFF;
-	p1 -= 224;
-	
-      }
-    }
-  }
-}
-
-void render() {
-  // ADDS A LOCK ON RENDERING
-  // std::unique_lock<std::mutex> lk(m2);
-  //auto now = std::chrono::system_clock::now();
-  //cv.wait_until(lk, now + std::chrono::milliseconds(16), [](){return hardware_interrupt;});
-
-  /*
-    QUICK NOTE ON RENDERING:
-
-    https://stackoverflow.com/questions/5829881/avoid-waiting-on-swapbuffers
-    https://askubuntu.com/questions/331499/xorg-compiz-is-using-massive-amounts-of-cpu-what-to-do
-
-    
-   */
-  
-  usleep(16000);
-
-  // POPULATE WINDOW WITH IN-MEMORY VIDEO RAM, (effective 60hz draw)
-  populateWindowFromMemory();
-  
-  // RENDER SCREEN
-  
-  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-  
-  glRasterPos2f(-1, 1); // IMPORTANT FOR STARTING AT 0, 0
-  glPixelZoom(1 * 2, -1 * 2);   // MIRROR IMAGE, and ZOOM IN, to window size
-  
-  glDrawPixels(W, H, GL_RGBA, GL_UNSIGNED_BYTE, windowPixels);
-  
-  glfwSwapBuffers(window);
-}
 
 uint8_t port3_previous = 0x00;
 uint8_t port5_previous = 0x00;
@@ -600,6 +538,9 @@ void * graphicsThread(void *x) {
   ROM * rom = (ROM *) x;
   printf ("Playing ROM : %i\n", (int) *rom);
 
+  // GET RENDER FUNCTION
+  render_func render = render_function(*rom);
+  
   if (!glfwInit())
     exit(1);
 
@@ -617,7 +558,8 @@ void * graphicsThread(void *x) {
 
   while (!glfwWindowShouldClose(window)) {  
     // render here
-    render();
+    //render();
+    render(state, windowPixels, window);
 
     // register sound effects
     playSoundEffects(*rom);

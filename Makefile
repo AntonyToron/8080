@@ -28,8 +28,8 @@ WX_FLAGS = $(shell wx-config --cxxflags)
 
 #LIBS = $(SDLLIBS) + $(LIBS)
 INCLUDES = -I./hardware -I./utils -I./machine -I./obj
-OBJS = ./obj/CPU.o ./obj/Utils.o ./obj/Drivers.o
-HEADERS = ./machine/CPU.h ./utils/Utils.h ./hardware/Drivers.h ./machine/arcade_machine.h ./machine/Types.h
+OBJS = ./obj/CPU.o ./obj/Utils.o ./obj/Drivers.o ./obj/Graphics.o
+HEADERS = ./machine/CPU.h ./utils/Utils.h ./hardware/Drivers.h ./machine/arcade_machine.h ./machine/Types.h ./utils/Graphics.h
 
 # Pattern rule, any .o file with .c file of same name will assume it
 # %.o: %.c
@@ -75,6 +75,8 @@ emulator: ./obj/emulator.o ./obj/arcade_machine.o $(OBJS)
 	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
 ./obj/Drivers.o: ./hardware/Drivers.c $(HEADERS)
 	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
+./obj/Graphics.o: ./utils/Graphics.cpp $(HEADERS)
+	$(CPP) $(CFLAGS) $(INCLUDES) -c $< -o $@
 
 ./obj/cpu_test.o: cpu_test.c $(HEADERS)
 	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@

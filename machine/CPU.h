@@ -5,6 +5,9 @@
   Author : Antony Toron
  */
 
+#ifndef CPU_HEADER
+#define CPU_HEADER
+
 #include <stdint.h>
 #include <stddef.h>
 
@@ -51,3 +54,5 @@ int op_clockCycles(State8080_T state);
 uint8_t *pointerToMemoryAt(State8080_T state, uint16_t addr);
 
 void startPrintingOut();
+
+#endif
